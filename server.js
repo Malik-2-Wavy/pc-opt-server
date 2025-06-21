@@ -55,7 +55,7 @@ const keyDB = {
   "21Services-1Week-Optimizer-69321-0857": { type: "1week", expiresAt: now + 7*24*3600*1000 },
 
   // Lifetime keys (no expiration)
-  "21Services-Lifetime-Optimizer-15390-8675": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-Optimizer-15390-8676": { type: "lifetime", expiresAt: null },
   "21Services-Lifetime-Optimizer-68204-3197": { type: "lifetime", expiresAt: null },
   "21Services-Lifetime-Optimizer-59713-8046": { type: "lifetime", expiresAt: null },
   "21Services-Lifetime-Optimizer-38025-6719": { type: "lifetime", expiresAt: null },
