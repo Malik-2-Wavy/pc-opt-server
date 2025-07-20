@@ -198,7 +198,29 @@ const keyDB = {
 "21Services-BulletDropPack-48025-9509": { type: "lifetime", expiresAt: null },
 "21Services-BulletDropPack-65081-7425": { type: "lifetime", expiresAt: null },
 "21Services-BulletDropPack-50837-9163": { type: "lifetime", expiresAt: null },
-"21Services-BulletDropPack-38062-1544": { type: "lifetime", expiresAt: null }
+"21Services-BulletDropPack-38062-1544": { type: "lifetime", expiresAt: null },
+
+"21Services-PacketPlacementPack-65886-8909": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-10985-4269": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-65494-7224": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-94409-9015": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-28130-3996": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-95970-2847": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-83606-2192": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-67628-8608": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-46463-2474": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-92221-4179": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-13776-8071": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-41207-2416": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-12107-8783": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-92709-7794": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-51703-7039": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-29390-2092": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-18179-3857": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-36346-5848": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-57932-7315": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-59206-9099": { type: "lifetime", expiresAt: null }
+
 };
 
 app.get('/', (req, res) => {
