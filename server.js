@@ -224,27 +224,49 @@ const keyDB = {
 };
 
 app.get('/', (req, res) => {
-  res.send('Key Validation Server is running.');
+  res.send('Key Validation Server with HWID binding is running.');
 });
 
 app.post('/validate-key', (req, res) => {
-  const { key } = req.body;
+  const { key, hwid } = req.body;
+
   if (!key || typeof key !== 'string') {
-    return res.status(400).json({ valid: false, message: "Key missing or invalid" });
+    return res.status(400).json({ valid: false, message: "Key missing or invalid." });
+  }
+
+  if (!hwid || typeof hwid !== 'string') {
+    return res.status(400).json({ valid: false, message: "HWID missing or invalid." });
   }
 
   const record = keyDB[key];
   if (!record) {
-    return res.json({ valid: false, message: "Key not found" });
+    return res.json({ valid: false, message: "Key not found." });
   }
 
-  if (record.type !== 'lifetime' && record.expiresAt < Date.now()) {
-    return res.json({ valid: false, message: "Key expired" });
+  // Check if key expired (if time-limited)
+  if (record.type !== 'lifetime') {
+    if (!record.expiresAt || Date.now() > record.expiresAt) {
+      return res.json({ valid: false, message: "Key expired." });
+    }
   }
 
-  return res.json({ valid: true, message: "Key is valid", type: record.type });
+  // HWID binding logic:
+  if (!record.boundHWID) {
+    // Bind this key to the HWID for first time
+    record.boundHWID = hwid;
+  } else if (record.boundHWID !== hwid) {
+    return res.json({ valid: false, message: "HWID does not match the bound device." });
+  }
+
+  // Key is valid and HWID matches or was just bound
+  return res.json({
+    valid: true,
+    message: "Key is valid and bound HWID verified.",
+    type: record.type,
+    boundHWID: record.boundHWID
+  });
 });
 
 app.listen(PORT, () => {
-  console.log(`Key validation server running on port ${PORT}`);
+  console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
