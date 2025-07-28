@@ -135,7 +135,7 @@ const keyDB = {
 "21Services-ShotgunPack-48307-5291": { type: "lifetime", expiresAt: null },
 "21Services-ShotgunPack-65329-7810": { type: "lifetime", expiresAt: null },
 "21Services-ShotgunPack-50718-9425": { type: "lifetime", expiresAt: null },
-"21Services-ShotgunPack-38106-6154": { type: "lifetime", expiresAt: null },
+"21Services-ShotgunPack-38106-6155": { type: "lifetime", expiresAt: null },
 
 "21Services-FortniteOptimizerPack-53829-4716": { type: "lifetime", expiresAt: null },
 "21Services-FortniteOptimizerPack-91384-2670": { type: "lifetime", expiresAt: null },
