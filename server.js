@@ -228,7 +228,7 @@ app.get('/', (req, res) => {
 });
 
 app.post('/validate-key', (req, res) => {
-  const { key, hwid } = req.body;
+  const { key, hwid, bind } = req.body;
 
   if (!key || typeof key !== 'string') {
     return res.status(400).json({ valid: false, message: "Key missing or invalid." });
@@ -250,18 +250,32 @@ app.post('/validate-key', (req, res) => {
     }
   }
 
-  // HWID binding logic:
+  // HWID binding logic with explicit bind flag
   if (!record.boundHWID) {
-    // Bind this key to the HWID for first time
-    record.boundHWID = hwid;
+    if (bind === true) {
+      // Explicit bind allowed
+      record.boundHWID = hwid;
+    } else {
+      // Not bound and no bind flag — don't bind automatically
+      return res.json({
+        valid: true,
+        hwidLocked: false,
+        message: "Key is valid but not yet bound to any HWID."
+      });
+    }
   } else if (record.boundHWID !== hwid) {
-    return res.json({ valid: false, message: "HWID does not match the bound device." });
+    return res.json({
+      valid: false,
+      hwidLocked: true,
+      message: "HWID does not match the bound device."
+    });
   }
 
   // Key is valid and HWID matches or was just bound
   return res.json({
     valid: true,
-    message: "Key is valid and bound HWID verified.",
+    hwidLocked: true,
+    message: "Key is valid and HWID verified.",
     type: record.type,
     boundHWID: record.boundHWID
   });
@@ -290,4 +304,3 @@ app.post('/check-hwid-lock', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
-
