@@ -267,6 +267,27 @@ app.post('/validate-key', (req, res) => {
   });
 });
 
+// New endpoint to check if a key is HWID locked without binding it
+app.post('/check-hwid-lock', (req, res) => {
+  const { key } = req.body;
+
+  if (!key || typeof key !== 'string') {
+    return res.status(400).json({ error: "Key missing or invalid." });
+  }
+
+  const record = keyDB[key];
+  if (!record) {
+    return res.json({ hwidLocked: false, message: "Key not found." });
+  }
+
+  if (record.boundHWID) {
+    return res.json({ hwidLocked: true, boundHWID: record.boundHWID });
+  } else {
+    return res.json({ hwidLocked: false, message: "Key is not HWID locked." });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
+
