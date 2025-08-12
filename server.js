@@ -71,7 +71,7 @@ const keyDB = {
   "21Services-Lifetime-Optimizer-47620-3195": { type: "lifetime", expiresAt: null },
   "21Services-Lifetime-Optimizer-89017-2543": { type: "lifetime", expiresAt: null },
   "21Services-Lifetime-Optimizer-36259-8401": { type: "lifetime", expiresAt: null },
-  "21Services-Lifetime-Optimizer-74102-6953": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-Optimizer-74102-6954": { type: "lifetime", expiresAt: null },
   "21Services-Lifetime-Optimizer-21874-5609": { type: "lifetime", expiresAt: null },
 
   "21Services-ARPack-58291-3746": { type: "lifetime", expiresAt: null },
@@ -92,7 +92,7 @@ const keyDB = {
   "21Services-ARPack-19082-3749": { type: "lifetime", expiresAt: null },
   "21Services-ARPack-48106-5297": { type: "lifetime", expiresAt: null },
   "21Services-ARPack-65093-7812": { type: "lifetime", expiresAt: null },
-  "21Services-ARPack-50718-9426": { type: "lifetime", expiresAt: null },
+  "21Services-ARPack-50718-9427": { type: "lifetime", expiresAt: null },
   "21Services-ARPack-38206-6148": { type: "lifetime", expiresAt: null },
 
   "21Services-SmgPack-53829-4710": { type: "lifetime", expiresAt: null },
@@ -113,7 +113,7 @@ const keyDB = {
 "21Services-SmgPack-19064-3728": { type: "lifetime", expiresAt: null },
 "21Services-SmgPack-48025-9571": { type: "lifetime", expiresAt: null },
 "21Services-SmgPack-65081-7429": { type: "lifetime", expiresAt: null },
-"21Services-SmgPack-50837-9164": { type: "lifetime", expiresAt: null },
+"21Services-SmgPack-50837-9165": { type: "lifetime", expiresAt: null },
 "21Services-SmgPack-38062-1549": { type: "lifetime", expiresAt: null },
 
 "21Services-ShotgunPack-58921-3740": { type: "lifetime", expiresAt: null },
@@ -134,7 +134,7 @@ const keyDB = {
 "21Services-ShotgunPack-19806-3724": { type: "lifetime", expiresAt: null },
 "21Services-ShotgunPack-48307-5291": { type: "lifetime", expiresAt: null },
 "21Services-ShotgunPack-65329-7810": { type: "lifetime", expiresAt: null },
-"21Services-ShotgunPack-50718-9425": { type: "lifetime", expiresAt: null },
+"21Services-ShotgunPack-50718-9426": { type: "lifetime", expiresAt: null },
 "21Services-ShotgunPack-38106-6155": { type: "lifetime", expiresAt: null },
 
 "21Services-FortniteOptimizerPack-53829-4716": { type: "lifetime", expiresAt: null },
@@ -155,7 +155,7 @@ const keyDB = {
 "21Services-FortniteOptimizerPack-19064-3720": { type: "lifetime", expiresAt: null },
 "21Services-FortniteOptimizerPack-48025-9501": { type: "lifetime", expiresAt: null },
 "21Services-FortniteOptimizerPack-65081-7421": { type: "lifetime", expiresAt: null },
-"21Services-FortniteOptimizerPack-50837-9169": { type: "lifetime", expiresAt: null },
+"21Services-FortniteOptimizerPack-50837-9168": { type: "lifetime", expiresAt: null },
 "21Services-FortniteOptimizerPack-38062-1541": { type: "lifetime", expiresAt: null },
 
 "21Services-BuildPlacePack-58129-4710": { type: "lifetime", expiresAt: null },
@@ -197,7 +197,7 @@ const keyDB = {
 "21Services-BulletDropPack-19064-3727": { type: "lifetime", expiresAt: null },
 "21Services-BulletDropPack-48025-9509": { type: "lifetime", expiresAt: null },
 "21Services-BulletDropPack-65081-7425": { type: "lifetime", expiresAt: null },
-"21Services-BulletDropPack-50837-9163": { type: "lifetime", expiresAt: null },
+"21Services-BulletDropPack-50837-9164": { type: "lifetime", expiresAt: null },
 "21Services-BulletDropPack-38062-1544": { type: "lifetime", expiresAt: null },
 
 "21Services-PacketPlacementPack-65886-8909": { type: "lifetime", expiresAt: null },
@@ -217,7 +217,7 @@ const keyDB = {
 "21Services-PacketPlacementPack-51703-7039": { type: "lifetime", expiresAt: null },
 "21Services-PacketPlacementPack-29390-2092": { type: "lifetime", expiresAt: null },
 "21Services-PacketPlacementPack-18179-3857": { type: "lifetime", expiresAt: null },
-"21Services-PacketPlacementPack-36346-5848": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-36346-5849": { type: "lifetime", expiresAt: null },
 "21Services-PacketPlacementPack-57932-7315": { type: "lifetime", expiresAt: null },
 "21Services-PacketPlacementPack-59206-9099": { type: "lifetime", expiresAt: null }
 
@@ -304,3 +304,4 @@ app.post('/check-hwid-lock', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
+
