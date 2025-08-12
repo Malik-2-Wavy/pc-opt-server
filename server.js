@@ -219,8 +219,28 @@ const keyDB = {
 "21Services-PacketPlacementPack-18179-3857": { type: "lifetime", expiresAt: null },
 "21Services-PacketPlacementPack-36346-5849": { type: "lifetime", expiresAt: null },
 "21Services-PacketPlacementPack-57932-7315": { type: "lifetime", expiresAt: null },
-"21Services-PacketPlacementPack-59206-9099": { type: "lifetime", expiresAt: null }
+"21Services-PacketPlacementPack-59206-9099": { type: "lifetime", expiresAt: null },
 
+"21Services-PacketPlacementPack-58291-4382": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-94710-1834": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-36245-9275": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-80513-6249": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-49628-7751": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-75302-1938": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-28164-5427": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-93741-8601": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-61824-3509": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-40295-7816": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-13598-6425": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-87923-5107": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-25071-8439": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-79416-2083": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-63105-4978": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-34892-6714": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-50617-2943": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-98264-1705": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-71930-5862": { type: "lifetime", expiresAt: null },
+"21Services-PacketPlacementPack-86421-3097": { type: "lifetime", expiresAt: null }
 };
 
 app.get('/', (req, res) => {
@@ -304,4 +324,5 @@ app.post('/check-hwid-lock', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
+
 
