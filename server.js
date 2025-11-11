@@ -221,26 +221,26 @@ const keyDB = {
 "21Services-PacketPlacementPack-57932-7315": { type: "lifetime", expiresAt: null },
 "21Services-PacketPlacementPack-59206-9099": { type: "lifetime", expiresAt: null },
 
-"21Services-Macro-58291-4382": { type: "lifetime", expiresAt: null },
-"21Services-Macro-94710-1834": { type: "lifetime", expiresAt: null },
-"21Services-Macro-36245-9275": { type: "lifetime", expiresAt: null },
-"21Services-Macro-80513-6249": { type: "lifetime", expiresAt: null },
-"21Services-Macro-49628-7751": { type: "lifetime", expiresAt: null },
-"21Services-Macro-75302-1938": { type: "lifetime", expiresAt: null },
-"21Services-Macro-28164-5427": { type: "lifetime", expiresAt: null },
-"21Services-Macro-93741-8601": { type: "lifetime", expiresAt: null },
-"21Services-Macro-61824-3509": { type: "lifetime", expiresAt: null },
-"21Services-Macro-40295-7816": { type: "lifetime", expiresAt: null },
-"21Services-Macro-13598-6425": { type: "lifetime", expiresAt: null },
-"21Services-Macro-87923-5107": { type: "lifetime", expiresAt: null },
-"21Services-Macro-25071-8439": { type: "lifetime", expiresAt: null },
-"21Services-Macro-79416-2083": { type: "lifetime", expiresAt: null },
-"21Services-Macro-63105-4978": { type: "lifetime", expiresAt: null },
-"21Services-Macro-34892-6714": { type: "lifetime", expiresAt: null },
-"21Services-Macro-50617-2943": { type: "lifetime", expiresAt: null },
-"21Services-Macro-98264-1705": { type: "lifetime", expiresAt: null },
-"21Services-Macro-71930-5862": { type: "lifetime", expiresAt: null },
-"21Services-Macro-86421-3097": { type: "lifetime", expiresAt: null }
+"PhantomWare-AIcheat-3748-0921": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-6502-1187": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-5813-4609": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-9274-3310": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-1406-7852": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-8039-2564": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-2197-6405": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-4761-9032": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-3058-4716": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-9921-0347": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-6678-1503": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-4820-7591": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-1534-8206": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-7405-3189": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-8362-5940": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-2910-4673": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-0587-2236": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-6149-3875": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-4293-5068": { type: "lifetime", expiresAt: null },
+"PhantomWare-AIcheat-1072-9644": { type: "lifetime", expiresAt: null }
 
 };
 
@@ -325,6 +325,7 @@ app.post('/check-hwid-lock', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
+
 
 
 
