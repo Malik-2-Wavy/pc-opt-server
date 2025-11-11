@@ -244,21 +244,6 @@ const keyDB = {
 
 };
 
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-
-// In-memory databases (replace with real DB in production)
-const keyDB = {
-  // Example: 'KEY123': { type: 'lifetime', boundHWID: null, expiresAt: null }
-};
-
-const userDB = {
-  // Example: 'username': { passwordHash: 'hash', key: 'KEY123', hwid: 'hwid123' }
-};
-
 app.get('/', (req, res) => {
   res.send('Key Validation Server with HWID binding is running.');
 });
@@ -456,3 +441,4 @@ app.post('/admin/add-key', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
+
