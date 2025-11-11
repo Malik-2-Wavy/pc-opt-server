@@ -244,10 +244,124 @@ const keyDB = {
 
 };
 
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+
+// In-memory databases (replace with real DB in production)
+const keyDB = {
+  // Example: 'KEY123': { type: 'lifetime', boundHWID: null, expiresAt: null }
+};
+
+const userDB = {
+  // Example: 'username': { passwordHash: 'hash', key: 'KEY123', hwid: 'hwid123' }
+};
+
 app.get('/', (req, res) => {
   res.send('Key Validation Server with HWID binding is running.');
 });
 
+// Authentication endpoint for signup and login
+app.post('/auth', (req, res) => {
+  const { username, password, key, hwid, action } = req.body;
+
+  // Validate required fields
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ success: false, message: "Username missing or invalid." });
+  }
+
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ success: false, message: "Password missing or invalid." });
+  }
+
+  if (!hwid || typeof hwid !== 'string') {
+    return res.status(400).json({ success: false, message: "HWID missing or invalid." });
+  }
+
+  if (action === 'signup') {
+    // Signup logic
+    if (!key || typeof key !== 'string') {
+      return res.status(400).json({ success: false, message: "Key missing or invalid." });
+    }
+
+    // Check if username already exists
+    if (userDB[username]) {
+      return res.json({ success: false, message: "Username already exists." });
+    }
+
+    // Validate the key
+    const keyRecord = keyDB[key];
+    if (!keyRecord) {
+      return res.json({ success: false, message: "Invalid key." });
+    }
+
+    // Check if key expired
+    if (keyRecord.type !== 'lifetime') {
+      if (!keyRecord.expiresAt || Date.now() > keyRecord.expiresAt) {
+        return res.json({ success: false, message: "Key expired." });
+      }
+    }
+
+    // Check if key is already bound to another HWID
+    if (keyRecord.boundHWID && keyRecord.boundHWID !== hwid) {
+      return res.json({ success: false, message: "Key is already bound to another device." });
+    }
+
+    // Bind key to HWID if not already bound
+    if (!keyRecord.boundHWID) {
+      keyRecord.boundHWID = hwid;
+    }
+
+    // Create user account
+    userDB[username] = {
+      passwordHash: password, // Already hashed by client
+      key: key,
+      hwid: hwid
+    };
+
+    return res.json({ success: true, message: "Signup successful.", key: key });
+
+  } else if (action === 'login') {
+    // Login logic
+    const user = userDB[username];
+    
+    if (!user) {
+      return res.json({ success: false, message: "Username not found." });
+    }
+
+    // Verify password
+    if (user.passwordHash !== password) {
+      return res.json({ success: false, message: "Incorrect password." });
+    }
+
+    // Verify HWID matches
+    if (user.hwid !== hwid) {
+      return res.json({ success: false, message: "HWID mismatch. Login from authorized device only." });
+    }
+
+    // Validate key is still valid
+    const keyRecord = keyDB[user.key];
+    if (!keyRecord) {
+      return res.json({ success: false, message: "Key no longer valid." });
+    }
+
+    // Check if key expired
+    if (keyRecord.type !== 'lifetime') {
+      if (!keyRecord.expiresAt || Date.now() > keyRecord.expiresAt) {
+        return res.json({ success: false, message: "Key expired." });
+      }
+    }
+
+    return res.json({ success: true, message: "Login successful.", key: user.key });
+
+  } else {
+    return res.status(400).json({ success: false, message: "Invalid action. Use 'signup' or 'login'." });
+  }
+});
+
+// Original validate-key endpoint (for backward compatibility)
 app.post('/validate-key', (req, res) => {
   const { key, hwid, bind } = req.body;
 
@@ -302,7 +416,7 @@ app.post('/validate-key', (req, res) => {
   });
 });
 
-// New endpoint to check if a key is HWID locked without binding it
+// Check if a key is HWID locked without binding it
 app.post('/check-hwid-lock', (req, res) => {
   const { key } = req.body;
 
@@ -322,10 +436,23 @@ app.post('/check-hwid-lock', (req, res) => {
   }
 });
 
+// Helper endpoint to add keys (for testing/admin purposes)
+app.post('/admin/add-key', (req, res) => {
+  const { key, type, expiresAt } = req.body;
+  
+  if (!key || typeof key !== 'string') {
+    return res.status(400).json({ success: false, message: "Key missing or invalid." });
+  }
+
+  keyDB[key] = {
+    type: type || 'lifetime',
+    boundHWID: null,
+    expiresAt: expiresAt || null
+  };
+
+  return res.json({ success: true, message: "Key added successfully." });
+});
+
 app.listen(PORT, () => {
   console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
-
-
-
-
