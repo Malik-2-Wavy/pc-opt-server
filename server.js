@@ -8,6 +8,8 @@ app.use(express.json());
 
 const now = Date.now();
 
+const userDB = {}; // ← This was missing
+
 // Sample key database
 const keyDB = {
   // 1day keys
@@ -441,4 +443,5 @@ app.post('/admin/add-key', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Key validation server with HWID binding running on port ${PORT}`);
 });
+
 
