@@ -242,7 +242,71 @@ const keyDB = {
 "PhantomWare-AIcheat-0587-2236": { type: "lifetime", expiresAt: null },
 "PhantomWare-AIcheat-6149-3875": { type: "lifetime", expiresAt: null },
 "PhantomWare-AIcheat-4293-5068": { type: "lifetime", expiresAt: null },
-"PhantomWare-AIcheat-1072-9644": { type: "lifetime", expiresAt: null }
+"PhantomWare-AIcheat-1072-9644": { type: "lifetime", expiresAt: null },
+    "21Services-1Day-NoLagg-48392-1746": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-90517-6382": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-27184-5903": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-84620-7319": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-19375-4086": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-56204-9173": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-70418-2569": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-38951-6420": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-92864-1057": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-14670-8392": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-67093-2841": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-41528-9064": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-89230-5178": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-53819-7604": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-20486-3957": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-78195-0426": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-35972-6814": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-62408-9531": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-97041-3285": { type: "1day", expiresAt: now + 24*3600*1000 },
+  "21Services-1Day-NoLagg-18653-7490": { type: "1day", expiresAt: now + 24*3600*1000 },
+
+  // 1Week keys
+  "21Services-1Week-NoLagg-57320-9416": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-80461-2379": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-29684-7501": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-91572-4083": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-43709-8265": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-16854-3097": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-74290-6518": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-35017-9842": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-69128-5730": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-82463-1905": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-50974-3681": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-18735-6429": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-96320-7048": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-27849-5316": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-64095-8172": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-71536-2094": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-43268-9751": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-85019-4637": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-39672-1805": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+  "21Services-1Week-NoLagg-12487-6983": { type: "1week", expiresAt: now + 7*24*3600*1000 },
+
+  // Lifetime keys
+  "21Services-Lifetime-NoLagg-69042-5731": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-41895-2067": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-73516-8490": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-28047-3916": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-96413-7508": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-15784-6329": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-80329-4175": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-52690-1483": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-74952-8604": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-39271-5046": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-68104-2379": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-90486-7152": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-23859-9460": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-57014-3827": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-81693-2504": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-14960-7382": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-47285-6910": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-65831-4209": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-79106-8345": { type: "lifetime", expiresAt: null },
+  "21Services-Lifetime-NoLagg-30578-1674": { type: "lifetime", expiresAt: null }
 
 };
 
@@ -385,3 +449,4 @@ app.post('/admin/add-key', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Key validation server with HWID binding running on port ${PORT}`);
 });
+
