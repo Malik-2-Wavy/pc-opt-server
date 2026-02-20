@@ -306,7 +306,28 @@ const keyDB = {
   "21Services-Lifetime-NoLagg-47285-6910": { type: "lifetime", expiresAt: null },
   "21Services-Lifetime-NoLagg-65831-4209": { type: "lifetime", expiresAt: null },
   "21Services-Lifetime-NoLagg-79106-8345": { type: "lifetime", expiresAt: null },
-  "21Services-Lifetime-NoLagg-30578-1674": { type: "lifetime", expiresAt: null }
+  "21Services-Lifetime-NoLagg-30578-1674": { type: "lifetime", expiresAt: null },
+
+  "PhantomWare-FortniteExternal-48271-5934": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-90736-1842": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-13589-7720": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-62490-3157": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-77814-9063": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-25063-4819": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-99107-2645": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-34682-7190": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-58041-8326": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-71295-4408": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-86320-1579": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-42976-6083": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-17458-3921": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-60533-8472": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-93841-2506": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-26719-7348": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-81462-5097": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-39075-1684": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-55628-9731": { type: "lifetime", expiresAt: null },
+"PhantomWare-FortniteExternal-72104-6859": { type: "lifetime", expiresAt: null }
 
 };
 
@@ -449,4 +470,5 @@ app.post('/admin/add-key', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Key validation server with HWID binding running on port ${PORT}`);
 });
+
 
