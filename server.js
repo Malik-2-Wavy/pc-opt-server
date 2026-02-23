@@ -458,6 +458,36 @@ app.post('/check-hwid-lock', (req, res) => {
   return res.json({ hwidLocked: false, message: "Key is not HWID locked." });
 });
 
+let activeSessions = new Set();
+
+// Call this when a key validates successfully
+app.post('/validate-key', (req, res) => {
+    const { key, hwid } = req.body;
+    // ... your existing validation logic ...
+    
+    // Add to active sessions
+    activeSessions.add(hwid);
+    
+    // Remove after 5 minutes of inactivity
+    setTimeout(() => activeSessions.delete(hwid), 5 * 60 * 1000);
+    
+    res.json({ valid: true });
+});
+
+// Heartbeat to keep session alive
+app.post('/heartbeat', (req, res) => {
+    const { hwid } = req.body;
+    activeSessions.delete(hwid);
+    activeSessions.add(hwid);
+    setTimeout(() => activeSessions.delete(hwid), 5 * 60 * 1000);
+    res.json({ ok: true });
+});
+
+// Return count
+app.get('/active-users', (req, res) => {
+    res.json({ count: activeSessions.size });
+});
+
 // 🔹 Admin add key
 app.post('/admin/add-key', (req, res) => {
   const { key, type, expiresAt } = req.body;
@@ -470,5 +500,3 @@ app.post('/admin/add-key', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Key validation server with HWID binding running on port ${PORT}`);
 });
-
-
