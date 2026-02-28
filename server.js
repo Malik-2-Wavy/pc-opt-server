@@ -504,7 +504,7 @@ app.post('/admin/ban', (req, res) => {
     const { hwid, key, adminSecret } = req.body;
     
     // Protect it with a secret so only you can call it
-    if (adminSecret !== 'YOUR_SECRET_PASSWORD_HERE') 
+    if (adminSecret !== 'Jetstrong73$') 
         return res.status(403).json({ success: false, message: "Unauthorized." });
     
     if (hwid) bannedHWIDs.add(hwid);
@@ -539,4 +539,5 @@ app.post('/check-ban', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Key validation server with HWID binding running on port ${PORT}`);
 });
+
 
