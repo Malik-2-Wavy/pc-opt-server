@@ -559,6 +559,42 @@ app.post('/admin/add-key', (req, res) => {
     return res.json({ success: true, message: "Key added successfully." });
 });
 
+// ── Announcement ──────────────────────────────────────────────
+let g_announcement = { title: '', message: '' };
+
+app.get('/announcement', (req, res) => {
+    res.json(g_announcement);
+});
+
+app.post('/admin/announcement', (req, res) => {
+    const { title, message, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    g_announcement = { title: title || '', message: message || '' };
+    return res.json({ success: true });
+});
+
+// ── Maintenance mode ──────────────────────────────────────────
+let g_maintenance = { enabled: false, message: '' };
+
+app.get('/maintenance', (req, res) => {
+    res.json(g_maintenance);
+});
+
+app.post('/admin/maintenance', (req, res) => {
+    const { enabled, message, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    g_maintenance = { enabled: !!enabled, message: message || '' };
+    return res.json({ success: true });
+});
+
+// ── Ban count ─────────────────────────────────────────────────
+app.post('/admin/ban-count', (req, res) => {
+    const { adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    res.json({ count: bannedHWIDs.size + bannedKeys.size });
+});
+
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
+
