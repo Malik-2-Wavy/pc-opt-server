@@ -9,6 +9,8 @@ app.use(express.json());
 const now = Date.now();
 
 const userDB = {}; // ← This was missing
+let bannedHWIDs = new Set();
+let bannedKeys  = new Set();
 
 // Sample key database
 const keyDB = {
@@ -497,6 +499,44 @@ app.post('/admin/add-key', (req, res) => {
   return res.json({ success: true, message: "Key added successfully." });
 });
 
+// Ban endpoint — you call this yourself to ban someone
+app.post('/admin/ban', (req, res) => {
+    const { hwid, key, adminSecret } = req.body;
+    
+    // Protect it with a secret so only you can call it
+    if (adminSecret !== 'YOUR_SECRET_PASSWORD_HERE') 
+        return res.status(403).json({ success: false, message: "Unauthorized." });
+    
+    if (hwid) bannedHWIDs.add(hwid);
+    if (key)  bannedKeys.add(key);
+    
+    return res.json({ success: true, message: "Banned successfully." });
+});
+
+// Unban endpoint
+app.post('/admin/unban', (req, res) => {
+    const { hwid, key, adminSecret } = req.body;
+    
+    if (adminSecret !== 'YOUR_SECRET_PASSWORD_HERE')
+        return res.status(403).json({ success: false, message: "Unauthorized." });
+    
+    if (hwid) bannedHWIDs.delete(hwid);
+    if (key)  bannedKeys.delete(key);
+    
+    return res.json({ success: true, message: "Unbanned successfully." });
+});
+
+// Check if banned
+app.post('/check-ban', (req, res) => {
+    const { hwid, key } = req.body;
+    
+    if (bannedHWIDs.has(hwid) || bannedKeys.has(key))
+        return res.json({ banned: true, message: "You have been banned from PhantomWare." });
+    
+    return res.json({ banned: false });
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Key validation server with HWID binding running on port ${PORT}`);
 });
+
