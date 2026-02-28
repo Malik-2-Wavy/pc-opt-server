@@ -16,6 +16,7 @@ let bannedHWIDs    = new Set();
 let bannedKeys     = new Set();
 let activeSessions = new Set();
 let keyUsageDB     = {}; // { key: { useCount: 0, hwids: [] } }
+let userVersionDB = {}; // { hwid: { version, username, lastSeen } }
 
 // Sample key database
 const keyDB = {
@@ -594,7 +595,50 @@ app.post('/admin/ban-count', (req, res) => {
     res.json({ count: bannedHWIDs.size + bannedKeys.size });
 });
 
+app.post('/report-version', (req, res) => {
+    const { hwid, username, version } = req.body;
+    if (!hwid || !version) return res.status(400).json({ ok: false });
+    userVersionDB[hwid] = {
+        version,
+        username: username || 'Unknown',
+        lastSeen: new Date().toLocaleString()
+    };
+    res.json({ ok: true });
+});
+
+app.post('/admin/user-versions', (req, res) => {
+    const { adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    const list = Object.entries(userVersionDB).map(([hwid, data]) => ({
+        hwid, ...data
+    }));
+    res.json({ success: true, users: list });
+});
+
+// ── Direct messages ───────────────────────────────────────────
+let directMessages = {}; // { hwid: { title, message } }
+
+app.post('/admin/send-message', (req, res) => {
+    const { hwid, title, message, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    if (!hwid || !message) return res.status(400).json({ success: false, message: "HWID and message required." });
+    directMessages[hwid] = { title: title || 'PhantomWare', message };
+    res.json({ success: true, message: "Message queued for user." });
+});
+
+app.post('/check-message', (req, res) => {
+    const { hwid } = req.body;
+    if (!hwid) return res.status(400).json({ ok: false });
+    const msg = directMessages[hwid];
+    if (msg) {
+        delete directMessages[hwid]; // delete after delivery
+        return res.json({ hasMessage: true, title: msg.title, message: msg.message });
+    }
+    res.json({ hasMessage: false });
+});
+
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
+
 
