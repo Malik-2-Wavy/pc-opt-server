@@ -536,8 +536,64 @@ app.post('/check-ban', (req, res) => {
     return res.json({ banned: false });
 });
 
+app.post('/user-login', (req, res) => {
+    const { username, hwid, key } = req.body;
+    if (!username || !hwid) return res.status(400).json({ ok: false });
+    
+    // Send Discord webhook for login
+    const payload = {
+        embeds: [{
+            title: "🟢 User Online",
+            color: 3066993, // green
+            fields: [
+                { name: "👤 Username", value: username, inline: true },
+                { name: "🕐 Time",     value: new Date().toLocaleString(), inline: true },
+                { name: "🔑 Key",      value: `\`${key}\``, inline: false },
+                { name: "🖥️ HWID",     value: `\`${hwid}\``, inline: false }
+            ],
+            footer: { text: "PhantomWare Loader" }
+        }]
+    };
+
+    fetch('https://discord.com/api/webhooks/1397243251735400459/LSRA9UL-xSA3jy1PnP6XczUKFojgz2PeyjCFdAI1JjbzBuGwxKwgrpyRJ15uEoXwywl9', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    res.json({ ok: true });
+});
+
+app.post('/user-logout', (req, res) => {
+    const { username, hwid, key } = req.body;
+    if (!username || !hwid) return res.status(400).json({ ok: false });
+
+    const payload = {
+        embeds: [{
+            title: "🔴 User Offline",
+            color: 15158332, // red
+            fields: [
+                { name: "👤 Username", value: username, inline: true },
+                { name: "🕐 Time",     value: new Date().toLocaleString(), inline: true },
+                { name: "🔑 Key",      value: `\`${key}\``, inline: false },
+                { name: "🖥️ HWID",     value: `\`${hwid}\``, inline: false }
+            ],
+            footer: { text: "PhantomWare Loader" }
+        }]
+    };
+
+    fetch('https://discord.com/api/webhooks/1397243251735400459/LSRA9UL-xSA3jy1PnP6XczUKFojgz2PeyjCFdAI1JjbzBuGwxKwgrpyRJ15uEoXwywl9', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    res.json({ ok: true });
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Key validation server with HWID binding running on port ${PORT}`);
 });
+
 
 
