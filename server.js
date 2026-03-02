@@ -456,19 +456,6 @@ app.post('/check-hwid-lock', (req, res) => {
     return res.json({ hwidLocked: false, message: "Key is not HWID locked." });
 });
 
-app.post('/key-info', (req, res) => {
-  const { key } = req.body;
-  if (!key) return res.status(400).json({ success: false });
-  const info = userDB[key];
-  if (!info)  return res.json({ success: false, message: 'Key not found.' });
-  res.json({
-    success:    true,
-    playtime:   info.playtime    || 0,
-    injections: info.injections  || 0,
-    lastLogin:  info.lastLogin   || 'Never'
-  });
-});
-
 // ── Heartbeat ─────────────────────────────────────────────────
 app.post('/heartbeat', (req, res) => {
     const { hwid } = req.body;
@@ -743,6 +730,7 @@ app.post('/key-info', (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
+
 
 
 
