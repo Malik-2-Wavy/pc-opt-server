@@ -714,30 +714,36 @@ app.post('/admin/ban-list', (req, res) => {
 });
 
 app.post('/key-info', (req, res) => {
-    const { key } = req.body;
+    const key = (req.body.key || '').trim();
     if (!key) return res.status(400).json({ success: false });
-    
-    // Check if key exists
-    const keyData = userDB[key];
-    if (!keyData) return res.json({ success: false, message: 'Key not found.' });
 
-    // Get usage stats
-    const usage = keyUsageDB[key] || { useCount: 0, hwids: [] };
+    // Search keyDB (case insensitive)
+    const actualKey = Object.keys(keyDB).find(k => k.toLowerCase() === key.toLowerCase());
+    if (!actualKey) return res.json({ success: false, message: 'Key not found.' });
+
+    const keyData = keyDB[actualKey];
+    const usage   = keyUsageDB[actualKey] || { useCount: 0, hwids: [] };
+
+    // Find username from userDB by matching key
+    const userEntry = Object.entries(userDB).find(([, u]) => u.key === actualKey);
+    const username  = userEntry ? userEntry[0] : 'Never logged in';
 
     res.json({
         success:    true,
-        hwid:       keyData.hwid ? '🔒 Locked' : '🔓 Unlocked',
-        uses:       usage.useCount        || 0,
-        hwids:      usage.hwids.length    || 0,
-        playtime:   keyData.playtime      || 0,
-        injections: keyData.injections    || 0,
-        lastLogin:  keyData.lastLogin     || 'Never'
+        type:       keyData.type || 'lifetime',
+        hwid:       keyData.boundHWID ? '🔒 Locked' : '🔓 Unlocked',
+        uses:       usage.useCount     || 0,
+        hwids:      usage.hwids.length || 0,
+        playtime:   userEntry ? (userEntry[1].playtime   || 0) : 0,
+        injections: userEntry ? (userEntry[1].injections || 0) : 0,
+        lastLogin:  userEntry ? (userEntry[1].lastLogin  || 'Never') : 'Never',
+        username:   username
     });
 });
-
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
+
 
 
 
