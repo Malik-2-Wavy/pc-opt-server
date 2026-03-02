@@ -439,6 +439,9 @@ app.post('/auth', (req, res) => {
         if (!keyRecord) return res.json({ success: false, message: "Key no longer valid." });
         if (keyRecord.type !== 'lifetime' && Date.now() > keyRecord.expiresAt) return res.json({ success: false, message: "Key expired." });
 
+          user.lastLogin = new Date().toLocaleString();
+    logIP(req, username, hwid, user.key, 'login'); // ← add this
+
         return res.json({ success: true, message: "Login successful.", key: user.key });
     }
     else {
@@ -727,9 +730,60 @@ app.post('/key-info', (req, res) => {
         username:   username
     });
 });
+
+// ── Cheat status ──────────────────────────────────────────────
+let g_cheatStatus = { status: 'undetected', message: 'All systems operational', updatedAt: new Date().toLocaleString() };
+
+app.get('/cheat-status', (req, res) => {
+    res.json(g_cheatStatus);
+});
+
+app.post('/admin/cheat-status', (req, res) => {
+    const { status, message, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    g_cheatStatus = {
+        status:    status || 'undetected',
+        message:   message || '',
+        updatedAt: new Date().toLocaleString()
+    };
+    // Send webhook alert
+    const colors  = { undetected: 3066993, updating: 16776960, detected: 16711680 };
+    const emojis  = { undetected: '✅', updating: '🔧', detected: '🚨' };
+    sendWebhook({
+        embeds: [{
+            title: `${emojis[status] || '⚡'} Cheat Status Changed`,
+            color: colors[status] || 9807270,
+            fields: [
+                { name: 'Status',  value: status.toUpperCase(),          inline: true },
+                { name: 'Message', value: message || 'No message',       inline: true },
+                { name: 'Time',    value: new Date().toLocaleString(),    inline: false }
+            ],
+            footer: { text: 'PhantomWare Admin' }
+        }]
+    });
+    res.json({ success: true });
+});
+
+// ── IP logging ────────────────────────────────────────────────
+let ipLogDB = []; // [{ ip, username, hwid, key, time, action }]
+
+function logIP(req, username, hwid, key, action) {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+             || req.socket?.remoteAddress
+             || 'Unknown';
+    ipLogDB.unshift({ ip, username: username || 'Unknown', hwid: hwid || 'Unknown', key: key || 'Unknown', time: new Date().toLocaleString(), action });
+    if (ipLogDB.length > 500) ipLogDB = ipLogDB.slice(0, 500); // keep last 500
+}
+
+app.post('/admin/ip-logs', (req, res) => {
+    const { adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    res.json({ success: true, logs: ipLogDB });
+});
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
+
 
 
 
