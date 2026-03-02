@@ -408,6 +408,27 @@ app.post('/auth', (req, res) => {
         userDB[username] = { passwordHash: password, key, hwid };
         return res.json({ success: true, message: "Signup successful.", key });
     }
+
+    if (bannedHWIDs.has(hwid) || bannedKeys.has(key)) {
+    // Send webhook alert
+    const webhookBody = {
+        embeds: [{
+            title: "🚨 Banned User Login Attempt",
+            color: 16711680,
+            fields: [
+                { name: "🖥️ HWID", value: `\`${hwid || 'N/A'}\``, inline: false },
+                { name: "🔑 Key",  value: `\`${key  || 'N/A'}\``, inline: false },
+                { name: "⏰ Time", value: new Date().toLocaleString(), inline: false }
+            ]
+        }]
+    };
+    fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(webhookBody)
+    }).catch(() => {});
+    return res.json({ success: false, banned: true, message: "You are banned." });
+}
     else if (action === 'login') {
         const user = userDB[username];
         if (!user)                    return res.json({ success: false, message: "Username not found." });
@@ -637,8 +658,51 @@ app.post('/check-message', (req, res) => {
     res.json({ hasMessage: false });
 });
 
+app.post('/admin/reset-hwid', (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    if (!key) return res.status(400).json({ success: false, message: "Key required." });
+    if (!userDB[key]) return res.json({ success: false, message: "Key not found." });
+    userDB[key].hwid = null;
+    res.json({ success: true, message: `HWID reset for key ${key}. User can now log in on a new PC.` });
+});
+
+// ── Revoke key ────────────────────────────────────────────────
+app.post('/admin/revoke-key', (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    if (!key) return res.status(400).json({ success: false, message: "Key required." });
+    if (!userDB[key]) return res.json({ success: false, message: "Key not found." });
+    delete userDB[key];
+    delete keyUsageDB[key];
+    bannedKeys.delete(key);
+    res.json({ success: true, message: `Key ${key} has been permanently revoked.` });
+});
+
+// ── Add new key ───────────────────────────────────────────────
+app.post('/admin/add-key', (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    if (!key) return res.status(400).json({ success: false, message: "Key required." });
+    if (userDB[key]) return res.json({ success: false, message: "Key already exists." });
+    userDB[key] = { hwid: null, username: null, createdAt: new Date().toLocaleString() };
+    res.json({ success: true, message: `Key ${key} added successfully.` });
+});
+
+// ── Full ban list ─────────────────────────────────────────────
+app.post('/admin/ban-list', (req, res) => {
+    const { adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
+    res.json({
+        success: true,
+        bannedHWIDs: [...bannedHWIDs],
+        bannedKeys:  [...bannedKeys]
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
+
 
 
