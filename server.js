@@ -360,24 +360,22 @@ app.post('/validate-key', (req, res) => {
     const { key, hwid, bind } = req.body;
     if (!key || typeof key !== 'string') return res.status(400).json({ valid: false, message: "Key missing or invalid." });
     if (!hwid || typeof hwid !== 'string') return res.status(400).json({ valid: false, message: "HWID missing or invalid." });
-
     const record = keyDB[key];
     if (!record) return res.json({ valid: false, message: "Key not found." });
-
     if (record.type !== 'lifetime' && Date.now() > record.expiresAt)
         return res.json({ valid: false, message: "Key expired." });
-
     if (!record.boundHWID) {
         if (bind === true) record.boundHWID = hwid;
         else return res.json({ valid: true, hwidLocked: false, message: "Key valid but not yet bound." });
     } else if (record.boundHWID !== hwid) {
         return res.json({ valid: false, hwidLocked: true, message: "HWID does not match." });
     }
-
     // Add to active sessions
     activeSessions.delete(hwid);
     activeSessions.add(hwid);
     setTimeout(() => activeSessions.delete(hwid), 5 * 60 * 1000);
+
+    logIP(req, 'auto-login', hwid, key, 'validate'); // ← add this
 
     return res.json({
         valid: true,
@@ -783,6 +781,7 @@ app.post('/admin/ip-logs', (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
+
 
 
 
