@@ -335,7 +335,28 @@ const keyDB = {
 "PhantomWare-FortniteExternal-81462-5097": { type: "lifetime", expiresAt: null },
 "PhantomWare-FortniteExternal-39075-1684": { type: "lifetime", expiresAt: null },
 "PhantomWare-FortniteExternal-55628-9731": { type: "lifetime", expiresAt: null },
-"PhantomWare-FortniteExternal-72104-6859": { type: "lifetime", expiresAt: null }
+"PhantomWare-FortniteExternal-72104-6859": { type: "lifetime", expiresAt: null },
+
+"Phantomware-Spoofer-48392-1746": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-10584-6291": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-92741-5083": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-36420-9157": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-78159-2034": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-64218-7740": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-50937-1182": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-81462-3395": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-23095-6601": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-97413-8427": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-15864-9052": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-70621-4178": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-39258-5510": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-84590-2663": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-61743-7994": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-20486-1139": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-95370-4826": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-47812-9075": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-68935-1248": { type: "lifetime", expiresAt: null },
+"Phantomware-Spoofer-73104-5682": { type: "lifetime", expiresAt: null }
 
 };
 
