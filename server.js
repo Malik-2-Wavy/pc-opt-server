@@ -762,70 +762,51 @@ app.post('/heartbeat', (req, res) => {
     res.json({ ok: true });
 });
 
-// ── Key counts endpoint (paste into your server.js) ──────────
-// Place this alongside your other /admin routes
-
 app.post('/admin/key-counts', (req, res) => {
     const { adminSecret } = req.body;
     if (adminSecret !== ADMIN_SECRET)
         return res.status(403).json({ success: false, message: "Unauthorized." });
-
+ 
     const counts = {
-        fivem:   { day: 0, week: 0, month: 0, lifetime: 0 },
-        r6:      { day: 0, week: 0, month: 0, lifetime: 0 },
-        spoofer: { day: 0, week: 0, month: 0, lifetime: 0 }
+        fivem:       { day: 0, week: 0, month: 0, lifetime: 0 },
+        r6:          { day: 0, week: 0, month: 0, lifetime: 0 },
+        tempSpoofer: { onetime: 0, lifetime: 0 },
+        permSpoofer: { onetime: 0, lifetime: 0 }
     };
-
+ 
     for (const [key, record] of Object.entries(keyDB)) {
         const k = key.toLowerCase();
         const t = record.type;
-
-        // Skip expired timed keys so stock count is accurate
-        if (t !== 'lifetime' && record.expiresAt && Date.now() > record.expiresAt) continue;
-        // Skip already-bound keys (already sold/in use)
+ 
+        // Skip expired timed keys
+        if (t !== 'lifetime' && t !== 'onetime' && record.expiresAt && Date.now() > record.expiresAt) continue;
+        // Skip already-bound/used keys
         if (record.boundHWID) continue;
-
-        let bucket = null;
-        if (k.includes('phantomware-fivem'))      bucket = 'fivem';
-        else if (k.includes('phantomware-r6') || k.includes('-r6-')) bucket = 'r6';
-        else if (k.includes('spoofer'))           bucket = 'spoofer';
-
-        if (!bucket) continue;
-
-        if      (t === '1day')     counts[bucket].day++;
-        else if (t === '1week')    counts[bucket].week++;
-        else if (t === '1month')   counts[bucket].month++;
-        else if (t === 'lifetime') counts[bucket].lifetime++;
+ 
+        // ── Bucket matching ───────────────────────────────────
+        if (k.includes('phantomware-fivem')) {
+            if      (t === '1day')     counts.fivem.day++;
+            else if (t === '1week')    counts.fivem.week++;
+            else if (t === '1month')   counts.fivem.month++;
+            else if (t === 'lifetime') counts.fivem.lifetime++;
+        }
+        else if (k.includes('phantomware-r6')) {
+            if      (t === '1day')     counts.r6.day++;
+            else if (t === '1week')    counts.r6.week++;
+            else if (t === '1month')   counts.r6.month++;
+            else if (t === 'lifetime') counts.r6.lifetime++;
+        }
+        else if (k.includes('tempspoofer')) {
+            if      (t === 'onetime')  counts.tempSpoofer.onetime++;
+            else if (t === 'lifetime') counts.tempSpoofer.lifetime++;
+        }
+        else if (k.includes('permspoofer')) {
+            if      (t === 'onetime')  counts.permSpoofer.onetime++;
+            else if (t === 'lifetime') counts.permSpoofer.lifetime++;
+        }
     }
-
+ 
     res.json({ success: true, ...counts });
-});
-
-// ── Active users ──────────────────────────────────────────────
-app.get('/active-users', (req, res) => {
-    res.json({ count: activeSessions.size });
-});
-
-// ── User login event ──────────────────────────────────────────
-app.post('/user-login', (req, res) => {
-    const { username, hwid, key } = req.body;
-    if (!username || !hwid) return res.status(400).json({ ok: false });
-
-    sendWebhook({
-        embeds: [{
-            title: "🟢 User Online",
-            color: 3066993,
-            fields: [
-                { name: "👤 Username", value: username,      inline: true },
-                { name: "🕐 Time",     value: new Date().toLocaleString(), inline: true },
-                { name: "🔑 Key",      value: `\`${key}\``,  inline: false },
-                { name: "🖥️ HWID",     value: `\`${hwid}\``, inline: false }
-            ],
-            footer: { text: "PhantomWare Loader" }
-        }]
-    });
-
-    res.json({ ok: true });
 });
 
 // ── User logout event ─────────────────────────────────────────
