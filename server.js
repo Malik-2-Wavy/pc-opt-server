@@ -465,6 +465,7 @@ app.get('/', (req, res) => {
 });
 
 // ── Validate key (MERGED - no duplicate) ─────────────────────
+// ── Validate key (UPDATED) ─────────────────────
 app.post('/validate-key', (req, res) => {
     // 1. Destructure the new discord fields sent from the C++ loader
     const { key, hwid, bind, discordUsername, discordId } = req.body;
@@ -475,9 +476,22 @@ app.post('/validate-key', (req, res) => {
     const record = keyDB[key];
     if (!record) return res.json({ valid: false, message: "Key not found." });
     
+    // NEW LOGIC: Start expiration exactly when the key is first activated!
+    if (record.type !== 'lifetime' && !record.boundHWID && bind) {
+        let duration = 0;
+        if (record.type === '1day') duration = 24 * 3600 * 1000;
+        else if (record.type === '1week') duration = 7 * 24 * 3600 * 1000;
+        else if (record.type === '1month') duration = 30 * 24 * 3600 * 1000;
+        
+        // Overwrite the initial startup timer to start from precisely *now*
+        record.expiresAt = Date.now() + duration; 
+    }
+
+    // Check expiration timer
     if (record.type !== 'lifetime' && Date.now() > record.expiresAt)
         return res.json({ valid: false, message: "Key expired." });
         
+    // HWID Binding Check
     if (!record.boundHWID) {
         if (bind === true) record.boundHWID = hwid;
         else return res.json({ valid: true, hwidLocked: false, message: "Key valid but not yet bound." });
@@ -488,31 +502,24 @@ app.post('/validate-key', (req, res) => {
     // 2. Discord Linkage Feature: Merge this key to their Discord Account dynamically
     if (discordUsername && bind) {
         if (!userDB[discordUsername]) {
-            // Register their discord account into the userDB automatically
             userDB[discordUsername] = { 
-                passwordHash: discordId, // Store their discord ID here securely
+                passwordHash: discordId, 
                 key: key, 
                 hwid: hwid 
             };
         } else {
-            // Update an existing discord account entry with the newly activated key
             userDB[discordUsername].key = key;
             userDB[discordUsername].hwid = hwid;
         }
-        
-        // Optionally bind discordUsername logically to the key memory record
         record.discordUsername = discordUsername;
     }
 
-    // Add to active sessions
     activeSessions.delete(hwid);
     activeSessions.add(hwid);
     setTimeout(() => activeSessions.delete(hwid), 5 * 60 * 1000);
 
-    // Provide detailed IP logging with username indication
     logIP(req, 'auto-login', hwid, key, `validate (${discordUsername || 'Unlinked'})`); 
 
-    // Return the response ('type' informs the C++ loader of the duration!)
     return res.json({
         valid: true,
         hwidLocked: true,
