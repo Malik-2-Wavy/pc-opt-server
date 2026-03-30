@@ -762,6 +762,27 @@ app.post('/heartbeat', (req, res) => {
     res.json({ ok: true });
 });
 
+// ── Burn Onetime Key (Add this to your server) ───
+app.post('/burn-key', (req, res) => {
+    const { key, hwid } = req.body;
+    if (!key || !hwid) return res.status(400).json({ ok: false });
+    
+    const record = keyDB[key];
+    // Only burn if it's a onetime key and matches the HWID
+    if (record && record.type === 'onetime' && record.boundHWID === hwid) {
+        delete keyDB[key];
+        
+        // Also remove from user database if they registered
+        const userEntry = Object.entries(userDB).find(([, u]) => u.key === key);
+        if (userEntry) delete userDB[userEntry[0]];
+        
+        console.log(`🔥 Key ${key} burned after successful spoof.`);
+        return res.json({ ok: true, message: "One-time key consumed." });
+    }
+    res.json({ ok: false, message: "Key not eligible for burning." });
+});
+
+
 // ── Replace your existing /admin/key-counts route with this ───
 
 app.post('/admin/key-counts', (req, res) => {
