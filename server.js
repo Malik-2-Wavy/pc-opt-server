@@ -762,50 +762,52 @@ app.post('/heartbeat', (req, res) => {
     res.json({ ok: true });
 });
 
+// ── Replace your existing /admin/key-counts route with this ───
+
 app.post('/admin/key-counts', (req, res) => {
     const { adminSecret } = req.body;
     if (adminSecret !== ADMIN_SECRET)
         return res.status(403).json({ success: false, message: "Unauthorized." });
- 
+
     const counts = {
-        fivem:       { day: 0, week: 0, month: 0, lifetime: 0 },
-        r6:          { day: 0, week: 0, month: 0, lifetime: 0 },
-        tempSpoofer: { onetime: 0, lifetime: 0 },
-        permSpoofer: { onetime: 0, lifetime: 0 }
+        fivem:       { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
+        r6:          { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
+        tempSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 },
+        permSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 }
     };
- 
+
     for (const [key, record] of Object.entries(keyDB)) {
-        const k = key.toLowerCase();
-        const t = record.type;
- 
-        // Skip expired timed keys
-        if (t !== 'lifetime' && t !== 'onetime' && record.expiresAt && Date.now() > record.expiresAt) continue;
-        // Skip already-bound/used keys
-        if (record.boundHWID) continue;
- 
+        const k    = key.toLowerCase();
+        const t    = record.type;
+        const used = !!record.boundHWID;
+        const expired = t !== 'lifetime' && t !== 'onetime' && record.expiresAt && Date.now() > record.expiresAt;
+
+        // Skip expired & unbound keys (they're just dead stock, not useful to show)
+        if (expired && !used) continue;
+
         // ── Bucket matching ───────────────────────────────────
         if (k.includes('phantomware-fivem')) {
-            if      (t === '1day')     counts.fivem.day++;
-            else if (t === '1week')    counts.fivem.week++;
-            else if (t === '1month')   counts.fivem.month++;
-            else if (t === 'lifetime') counts.fivem.lifetime++;
+            if (t === '1day')        { used ? counts.fivem.usedDay++      : counts.fivem.day++;      }
+            else if (t === '1week')  { used ? counts.fivem.usedWeek++     : counts.fivem.week++;     }
+            else if (t === '1month') { used ? counts.fivem.usedMonth++    : counts.fivem.month++;    }
+            else if (t === 'lifetime'){ used ? counts.fivem.usedLifetime++ : counts.fivem.lifetime++; }
         }
         else if (k.includes('phantomware-r6')) {
-            if      (t === '1day')     counts.r6.day++;
-            else if (t === '1week')    counts.r6.week++;
-            else if (t === '1month')   counts.r6.month++;
-            else if (t === 'lifetime') counts.r6.lifetime++;
+            if (t === '1day')        { used ? counts.r6.usedDay++      : counts.r6.day++;      }
+            else if (t === '1week')  { used ? counts.r6.usedWeek++     : counts.r6.week++;     }
+            else if (t === '1month') { used ? counts.r6.usedMonth++    : counts.r6.month++;    }
+            else if (t === 'lifetime'){ used ? counts.r6.usedLifetime++ : counts.r6.lifetime++; }
         }
         else if (k.includes('tempspoofer')) {
-            if      (t === 'onetime')  counts.tempSpoofer.onetime++;
-            else if (t === 'lifetime') counts.tempSpoofer.lifetime++;
+            if (t === 'onetime')      { used ? counts.tempSpoofer.usedOnetime++  : counts.tempSpoofer.onetime++;  }
+            else if (t === 'lifetime'){ used ? counts.tempSpoofer.usedLifetime++ : counts.tempSpoofer.lifetime++; }
         }
         else if (k.includes('permspoofer')) {
-            if      (t === 'onetime')  counts.permSpoofer.onetime++;
-            else if (t === 'lifetime') counts.permSpoofer.lifetime++;
+            if (t === 'onetime')      { used ? counts.permSpoofer.usedOnetime++  : counts.permSpoofer.onetime++;  }
+            else if (t === 'lifetime'){ used ? counts.permSpoofer.usedLifetime++ : counts.permSpoofer.lifetime++; }
         }
     }
- 
+
     res.json({ success: true, ...counts });
 });
 
