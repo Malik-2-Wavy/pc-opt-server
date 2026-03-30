@@ -698,8 +698,8 @@ app.post('/heartbeat', (req, res) => {
     res.json({ ok: true });
 });
 
-// ── Key counts (for Discord bot) ─────────────────────────────
-// Add this route to your server.js alongside the other /admin routes
+// ── Key counts endpoint (paste into your server.js) ──────────
+// Place this alongside your other /admin routes
 
 app.post('/admin/key-counts', (req, res) => {
     const { adminSecret } = req.body;
@@ -709,31 +709,29 @@ app.post('/admin/key-counts', (req, res) => {
     const counts = {
         fivem:   { day: 0, week: 0, month: 0, lifetime: 0 },
         r6:      { day: 0, week: 0, month: 0, lifetime: 0 },
-        spoofer: { lifetime: 0 }
+        spoofer: { day: 0, week: 0, month: 0, lifetime: 0 }
     };
 
     for (const [key, record] of Object.entries(keyDB)) {
         const k = key.toLowerCase();
         const t = record.type;
 
-        // Skip expired timed keys
+        // Skip expired timed keys so stock count is accurate
         if (t !== 'lifetime' && record.expiresAt && Date.now() > record.expiresAt) continue;
+        // Skip already-bound keys (already sold/in use)
+        if (record.boundHWID) continue;
 
-        if (k.includes('phantomware-fivem') || k.includes('fivem')) {
-            if (t === '1day')     counts.fivem.day++;
-            else if (t === '1week')  counts.fivem.week++;
-            else if (t === '1month') counts.fivem.month++;
-            else if (t === 'lifetime') counts.fivem.lifetime++;
-        }
-        else if (k.includes('phantomware-r6') || k.includes('-r6-')) {
-            if (t === '1day')     counts.r6.day++;
-            else if (t === '1week')  counts.r6.week++;
-            else if (t === '1month') counts.r6.month++;
-            else if (t === 'lifetime') counts.r6.lifetime++;
-        }
-        else if (k.includes('spoofer')) {
-            if (t === 'lifetime') counts.spoofer.lifetime++;
-        }
+        let bucket = null;
+        if (k.includes('phantomware-fivem'))      bucket = 'fivem';
+        else if (k.includes('phantomware-r6') || k.includes('-r6-')) bucket = 'r6';
+        else if (k.includes('spoofer'))           bucket = 'spoofer';
+
+        if (!bucket) continue;
+
+        if      (t === '1day')     counts[bucket].day++;
+        else if (t === '1week')    counts[bucket].week++;
+        else if (t === '1month')   counts[bucket].month++;
+        else if (t === 'lifetime') counts[bucket].lifetime++;
     }
 
     res.json({ success: true, ...counts });
