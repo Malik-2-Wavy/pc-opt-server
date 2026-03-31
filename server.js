@@ -30,6 +30,7 @@ function loadState() {
                 if (data.boundHWID)       keyDB[key].boundHWID       = data.boundHWID;
                 if (data.expiresAt)       keyDB[key].expiresAt       = data.expiresAt;
                 if (data.discordUsername) keyDB[key].discordUsername  = data.discordUsername;
+                if (data.discordId) keyDB[key].discordId  = data.discordId;
             }
         }
         console.log('✅ Key state loaded from disk.');
@@ -44,11 +45,12 @@ function saveState() {
     const toSave = {};
     for (const [key, record] of Object.entries(keyDB)) {
         if (record.boundHWID || record.expiresAt || record.discordUsername) {
-            toSave[key] = {
-                boundHWID:       record.boundHWID       || null,
-                expiresAt:       record.expiresAt       || null,
-                discordUsername: record.discordUsername  || null,
-            };
+toSave[key] = {
+    boundHWID:       record.boundHWID       || null,
+    expiresAt:       record.expiresAt       || null,
+    discordUsername: record.discordUsername  || null,
+    discordId:       record.discordId        || null,  // ← add this
+};
         }
     }
     fs.writeFileSync(STATE_FILE, JSON.stringify(toSave, null, 2));
