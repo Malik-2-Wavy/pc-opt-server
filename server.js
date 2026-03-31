@@ -962,6 +962,7 @@ app.post('/admin/key-counts', (req, res) => {
     const counts = {
         fivem:       { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
         r6:          { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
+        retrac:      { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
         tempSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 },
         permSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 }
     };
@@ -983,6 +984,11 @@ app.post('/admin/key-counts', (req, res) => {
             else if (t === '1week')    { used ? counts.r6.usedWeek++        : counts.r6.week++;        }
             else if (t === '1month')   { used ? counts.r6.usedMonth++       : counts.r6.month++;       }
             else if (t === 'lifetime') { used ? counts.r6.usedLifetime++    : counts.r6.lifetime++;    }
+        } else if (k.includes('phantomware-retrac')) {
+            if      (t === '1day')     { used ? counts.retrac.usedDay++         : counts.retrac.day++;         }
+            else if (t === '1week')    { used ? counts.retrac.usedWeek++        : counts.retrac.week++;        }
+            else if (t === '1month')   { used ? counts.retrac.usedMonth++       : counts.retrac.month++;       }
+            else if (t === 'lifetime') { used ? counts.retrac.usedLifetime++    : counts.retrac.lifetime++;    }
         } else if (k.includes('tempspoofer')) {
             if      (t === 'onetime')  { used ? counts.tempSpoofer.usedOnetime++  : counts.tempSpoofer.onetime++;  }
             else if (t === 'lifetime') { used ? counts.tempSpoofer.usedLifetime++ : counts.tempSpoofer.lifetime++; }
