@@ -1247,8 +1247,7 @@ app.post('/admin/verify-key', (req, res) => {
     else if (k.includes('phantomware-r6'))           product = 'r6';
     else if (k.includes('tempspoofer'))              product = 'tempSpoofer';
     else if (k.includes('permspoofer'))              product = 'permSpoofer';
-    else if (k.includes('fortniteexternal'))         product = 'retrac';
-    else if (k.includes('aicheat'))                  product = 'retrac';
+    else if (k.includes('phantomware-retrac'))       product = 'retrac';
 
     // Normalise duration label
     const durationMap = {
@@ -1310,8 +1309,7 @@ app.post('/admin/lookup-discord', (req, res) => {
     else if (k.includes('phantomware-r6'))       product = 'r6';
     else if (k.includes('tempspoofer'))          product = 'tempSpoofer';
     else if (k.includes('permspoofer'))          product = 'permSpoofer';
-    else if (k.includes('fortniteexternal'))     product = 'retrac';
-    else if (k.includes('aicheat'))              product = 'retrac';
+    else if (k.includes('phantomware-retrac'))       product = 'retrac';
 
     const durationMap = {
         '1day': 'Day', '1week': 'Week', '1month': 'Month',
