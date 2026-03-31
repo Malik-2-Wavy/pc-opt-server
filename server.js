@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
+const fs   = require('fs');
+const path = require('path');
 
 app.use(cors());
 app.use(express.json());
@@ -17,6 +19,39 @@ let bannedKeys     = new Set();
 let activeSessions = new Set();
 let keyUsageDB     = {}; // { key: { useCount: 0, hwids: [] } }
 let userVersionDB = {}; // { hwid: { version, username, lastSeen } }
+
+const STATE_FILE = path.join(__dirname, 'key-state.json');
+
+function loadState() {
+    if (!fs.existsSync(STATE_FILE)) return;
+    try {
+        const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+        for (const [key, data] of Object.entries(saved)) {
+            if (keyDB[key]) {
+                if (data.boundHWID)       keyDB[key].boundHWID       = data.boundHWID;
+                if (data.expiresAt)       keyDB[key].expiresAt       = data.expiresAt;
+                if (data.discordUsername) keyDB[key].discordUsername  = data.discordUsername;
+            }
+        }
+        console.log('✅ Key state loaded from disk.');
+    } catch (e) {
+        console.error('Failed to load key state:', e.message);
+    }
+}
+
+function saveState() {
+    const toSave = {};
+    for (const [key, record] of Object.entries(keyDB)) {
+        if (record.boundHWID || record.discordUsername) {
+            toSave[key] = {
+                boundHWID:       record.boundHWID       || null,
+                expiresAt:       record.expiresAt       || null,
+                discordUsername: record.discordUsername  || null,
+            };
+        }
+    }
+    fs.writeFileSync(STATE_FILE, JSON.stringify(toSave, null, 2));
+}
 
 // Sample key database
 const keyDB = {
@@ -600,6 +635,8 @@ const keyDB = {
 
 };
 
+loadState();
+
 // ── Helper: send discord webhook ─────────────────────────────
 async function sendWebhook(payload) {
     try {
@@ -619,58 +656,54 @@ app.get('/', (req, res) => {
 // ── Validate key (MERGED - no duplicate) ─────────────────────
 // ── Validate key (UPDATED) ─────────────────────
 app.post('/validate-key', (req, res) => {
-    // 1. Destructure the new discord fields sent from the C++ loader
     const { key, hwid, bind, discordUsername, discordId } = req.body;
-    
+
     if (!key || typeof key !== 'string') return res.status(400).json({ valid: false, message: "Key missing or invalid." });
     if (!hwid || typeof hwid !== 'string') return res.status(400).json({ valid: false, message: "HWID missing or invalid." });
-    
+
     const record = keyDB[key];
     if (!record) return res.json({ valid: false, message: "Key not found." });
-    
-    // NEW LOGIC: Start expiration exactly when the key is first activated!
-    if (record.type !== 'lifetime' && !record.boundHWID && bind) {
+
+    // Start expiration on first activation
+    if (record.type !== 'lifetime' && record.type !== 'onetime' && !record.boundHWID && bind) {
         let duration = 0;
-        if (record.type === '1day') duration = 24 * 3600 * 1000;
-        else if (record.type === '1week') duration = 7 * 24 * 3600 * 1000;
+        if (record.type === '1day')   duration = 24 * 3600 * 1000;
+        else if (record.type === '1week')  duration = 7 * 24 * 3600 * 1000;
         else if (record.type === '1month') duration = 30 * 24 * 3600 * 1000;
-        
-        // Overwrite the initial startup timer to start from precisely *now*
-        record.expiresAt = Date.now() + duration; 
+        record.expiresAt = Date.now() + duration;
+        saveState(); // ← persist expiry
     }
 
-    // Check expiration timer
-    if (record.type !== 'lifetime' && Date.now() > record.expiresAt)
+    if (record.type !== 'lifetime' && record.type !== 'onetime' && Date.now() > record.expiresAt)
         return res.json({ valid: false, message: "Key expired." });
-        
-    // HWID Binding Check
+
     if (!record.boundHWID) {
-        if (bind === true) record.boundHWID = hwid;
-        else return res.json({ valid: true, hwidLocked: false, message: "Key valid but not yet bound." });
+        if (bind === true) {
+            record.boundHWID = hwid;
+            saveState(); // ← persist binding
+        } else {
+            return res.json({ valid: true, hwidLocked: false, message: "Key valid but not yet bound." });
+        }
     } else if (record.boundHWID !== hwid) {
         return res.json({ valid: false, hwidLocked: true, message: "HWID does not match." });
     }
-    
-    // 2. Discord Linkage Feature: Merge this key to their Discord Account dynamically
+
     if (discordUsername && bind) {
         if (!userDB[discordUsername]) {
-            userDB[discordUsername] = { 
-                passwordHash: discordId, 
-                key: key, 
-                hwid: hwid 
-            };
+            userDB[discordUsername] = { passwordHash: discordId, key, hwid };
         } else {
-            userDB[discordUsername].key = key;
+            userDB[discordUsername].key  = key;
             userDB[discordUsername].hwid = hwid;
         }
         record.discordUsername = discordUsername;
+        saveState(); // ← persist discord link
     }
 
     activeSessions.delete(hwid);
     activeSessions.add(hwid);
     setTimeout(() => activeSessions.delete(hwid), 5 * 60 * 1000);
 
-    logIP(req, 'auto-login', hwid, key, `validate (${discordUsername || 'Unlinked'})`); 
+    logIP(req, 'auto-login', hwid, key, `validate (${discordUsername || 'Unlinked'})`);
 
     return res.json({
         valid: true,
@@ -766,20 +799,63 @@ app.post('/heartbeat', (req, res) => {
 app.post('/burn-key', (req, res) => {
     const { key, hwid } = req.body;
     if (!key || !hwid) return res.status(400).json({ ok: false });
-    
+
     const record = keyDB[key];
-    // Only burn if it's a onetime key and matches the HWID
     if (record && record.type === 'onetime' && record.boundHWID === hwid) {
         delete keyDB[key];
-        
-        // Also remove from user database if they registered
         const userEntry = Object.entries(userDB).find(([, u]) => u.key === key);
         if (userEntry) delete userDB[userEntry[0]];
-        
+        saveState(); // ← persist the deletion
         console.log(`🔥 Key ${key} burned after successful spoof.`);
         return res.json({ ok: true, message: "One-time key consumed." });
     }
     res.json({ ok: false, message: "Key not eligible for burning." });
+});
+
+// ── Ban key by key string ─────────────────────────────────────
+app.post('/admin/ban-key', (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET)
+        return res.status(403).json({ success: false, message: "Unauthorized." });
+    if (!key)
+        return res.status(400).json({ success: false, message: "Key required." });
+
+    const record = keyDB[key];
+    if (!record)
+        return res.json({ success: false, message: "Key not found in keyDB." });
+
+    bannedKeys.add(key);
+    if (record.boundHWID) bannedHWIDs.add(record.boundHWID);
+
+    const userEntry = Object.entries(userDB).find(([, u]) => u.key === key);
+    if (userEntry) delete userDB[userEntry[0]];
+
+    saveState();
+    console.log(`🔨 Key banned: ${key} | HWID: ${record.boundHWID || 'unbound'}`);
+    return res.json({ success: true, message: `Key ${key} banned.`, hwid: record.boundHWID || null });
+});
+
+// ── Reset HWID by key ─────────────────────────────────────────
+app.post('/admin/reset-hwid-by-key', (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET)
+        return res.status(403).json({ success: false, message: "Unauthorized." });
+    if (!key)
+        return res.status(400).json({ success: false, message: "Key required." });
+
+    const record = keyDB[key];
+    if (!record)
+        return res.json({ success: false, message: "Key not found in keyDB." });
+
+    const oldHWID = record.boundHWID || null;
+    record.boundHWID = null;
+
+    const userEntry = Object.entries(userDB).find(([, u]) => u.key === key);
+    if (userEntry) userEntry[1].hwid = null;
+
+    saveState();
+    console.log(`🔓 HWID reset for key: ${key} (was: ${oldHWID})`);
+    return res.json({ success: true, message: `HWID reset for ${key}.`, previousHWID: oldHWID });
 });
 
 
