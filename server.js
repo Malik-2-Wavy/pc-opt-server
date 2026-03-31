@@ -1213,6 +1213,118 @@ app.post('/admin/ip-logs', (req, res) => {
     res.json({ success: true, logs: ipLogDB });
 });
 
+// ── VERIFY KEY (for Discord verification bot) ─────────────────
+app.post('/admin/verify-key', (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET)
+        return res.status(403).json({ valid: false, reason: "Unauthorized." });
+    if (!key)
+        return res.status(400).json({ valid: false, reason: "Key required." });
+
+    const record = keyDB[key];
+    if (!record)
+        return res.json({ valid: false, reason: "Key not found." });
+
+    // Check if banned
+    if (bannedKeys.has(key))
+        return res.json({ valid: false, reason: "Key is banned." });
+    if (record.boundHWID && bannedHWIDs.has(record.boundHWID))
+        return res.json({ valid: false, reason: "Key is banned." });
+
+    // Check expiry (server clock only)
+    const isTimed = record.type !== 'lifetime' && record.type !== 'onetime';
+    if (isTimed && record.expiresAt && Date.now() > record.expiresAt)
+        return res.json({ valid: false, reason: "Key has expired." });
+
+    // Detect product from key name
+    const k = key.toLowerCase();
+    let product  = 'unknown';
+    let duration = record.type;
+
+    if      (k.includes('phantomware-fivem'))       product = 'fivem';
+    else if (k.includes('phantomware-r6'))           product = 'r6';
+    else if (k.includes('tempspoofer'))              product = 'tempSpoofer';
+    else if (k.includes('permspoofer'))              product = 'permSpoofer';
+    else if (k.includes('fortniteexternal'))         product = 'retrac';
+    else if (k.includes('aicheat'))                  product = 'retrac';
+
+    // Normalise duration label
+    const durationMap = {
+        '1day':     'Day',
+        '1week':    'Week',
+        '1month':   'Month',
+        'lifetime': 'Lifetime',
+        'onetime':  'One-Time',
+    };
+
+    return res.json({
+        valid:     true,
+        product,
+        duration:  durationMap[record.type] || record.type,
+        hwid:      record.boundHWID || null,
+        discordId: record.discordId  || null,   // null if not yet Discord-linked
+    });
+});
+
+// ── BIND DISCORD ID TO KEY (for Discord verification bot) ─────
+app.post('/admin/bind-discord', (req, res) => {
+    const { key, discordId, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET)
+        return res.status(403).json({ success: false, message: "Unauthorized." });
+    if (!key || !discordId)
+        return res.status(400).json({ success: false, message: "Key and discordId required." });
+
+    const record = keyDB[key];
+    if (!record)
+        return res.json({ success: false, message: "Key not found." });
+
+    // If already bound to a DIFFERENT Discord account, reject
+    if (record.discordId && record.discordId !== discordId)
+        return res.json({ success: false, message: "Key already claimed by another Discord account." });
+
+    record.discordId = discordId;
+    saveState();
+
+    console.log(`🔗 Key ${key} bound to Discord ${discordId}`);
+    return res.json({ success: true });
+});
+
+// ── LOOKUP KEY BY DISCORD ID (for /checkkey command) ──────────
+app.post('/admin/lookup-discord', (req, res) => {
+    const { discordId, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET)
+        return res.status(403).json({ success: false, message: "Unauthorized." });
+    if (!discordId)
+        return res.status(400).json({ success: false, message: "discordId required." });
+
+    const entry = Object.entries(keyDB).find(([, r]) => r.discordId === discordId);
+    if (!entry)
+        return res.json({ found: false });
+
+    const [key, record] = entry;
+    const k = key.toLowerCase();
+    let product = 'unknown';
+    if      (k.includes('phantomware-fivem'))   product = 'fivem';
+    else if (k.includes('phantomware-r6'))       product = 'r6';
+    else if (k.includes('tempspoofer'))          product = 'tempSpoofer';
+    else if (k.includes('permspoofer'))          product = 'permSpoofer';
+    else if (k.includes('fortniteexternal'))     product = 'retrac';
+    else if (k.includes('aicheat'))              product = 'retrac';
+
+    const durationMap = {
+        '1day': 'Day', '1week': 'Week', '1month': 'Month',
+        'lifetime': 'Lifetime', 'onetime': 'One-Time',
+    };
+
+    return res.json({
+        found:    true,
+        key,
+        product,
+        duration: durationMap[record.type] || record.type,
+        banned:   bannedKeys.has(key) || (record.boundHWID && bannedHWIDs.has(record.boundHWID)) || false,
+    });
+});
+
 // ── START ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
