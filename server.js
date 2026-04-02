@@ -300,7 +300,7 @@ const keyDB = {
 "Phantomware-FortnitePublic-Lifetime-61825-3347": { type: "lifetime", expiresAt: null },
 "Phantomware-FortnitePublic-Lifetime-39011-7778": { type: "lifetime", expiresAt: null },
 "Phantomware-FortnitePublic-Lifetime-84562-1120": { type: "lifetime", expiresAt: null },
-"Phantomware-FortnitePublic-Lifetime-27109-6603": { type: "lifetime", expiresAt: null },
+"Phantomware-FortnitePublic-Lifetime-27109-6604": { type: "lifetime", expiresAt: null },
 
   // ── Phantomware R6 1day ───────────────────────────────────
   "Phantomware-R6-day-91347-5521": { type: "1day", expiresAt: null },
