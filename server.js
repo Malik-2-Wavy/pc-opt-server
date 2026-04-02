@@ -1080,6 +1080,11 @@ app.post('/admin/key-counts', (req, res) => {
             else if (t === '1week')    { used ? counts.retrac.usedWeek++        : counts.retrac.week++;        }
             else if (t === '1month')   { used ? counts.retrac.usedMonth++       : counts.retrac.month++;       }
             else if (t === 'lifetime') { used ? counts.retrac.usedLifetime++    : counts.retrac.lifetime++;    }
+        } else if (k.includes('phantomware-fortnitepublic')) {
+            if      (t === '1day')     { used ? counts.fortnitepublic.usedDay++         : counts.fortnitepublic.day++;         }
+            else if (t === '1week')    { used ? counts.fortnitepublic.usedWeek++        : counts.fortnitepublic.week++;        }
+            else if (t === '1month')   { used ? counts.fortnitepublic.usedMonth++       : counts.fortnitepublic.month++;       }
+            else if (t === 'lifetime') { used ? counts.fortnitepublic.usedLifetime++    : counts.fortnitepublic.lifetime++;    }
         } else if (k.includes('tempspoofer')) {
             if      (t === 'onetime')  { used ? counts.tempSpoofer.usedOnetime++  : counts.tempSpoofer.onetime++;  }
             else if (t === 'lifetime') { used ? counts.tempSpoofer.usedLifetime++ : counts.tempSpoofer.lifetime++; }
@@ -1337,6 +1342,7 @@ app.post('/admin/verify-key', (req, res) => {
     else if (k.includes('tempspoofer'))              product = 'tempSpoofer';
     else if (k.includes('permspoofer'))              product = 'permSpoofer';
     else if (k.includes('phantomware-retrac'))       product = 'retrac';
+    else if (k.includes('phantomware-fortnitepublic'))       product = 'fortnitepublic';
 
     // Normalise duration label
     const durationMap = {
@@ -1399,6 +1405,7 @@ app.post('/admin/lookup-discord', (req, res) => {
     else if (k.includes('tempspoofer'))          product = 'tempSpoofer';
     else if (k.includes('permspoofer'))          product = 'permSpoofer';
     else if (k.includes('phantomware-retrac'))       product = 'retrac';
+    else if (k.includes('phantomware-fortnitepublic'))       product = 'fortnitepublic';
 
     const durationMap = {
         '1day': 'Day', '1week': 'Week', '1month': 'Month',
