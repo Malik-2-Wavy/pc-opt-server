@@ -1141,7 +1141,8 @@ app.post('/admin/key-counts', (req, res) => {
         fivem:       { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
         r6:          { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
         retrac:      { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-        fortnitepublic:      { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
+        fortnitepublic:  { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
+        fortniteai:      { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
         tempSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 },
         permSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 }
     };
@@ -1173,6 +1174,11 @@ app.post('/admin/key-counts', (req, res) => {
             else if (t === '1week')    { used ? counts.fortnitepublic.usedWeek++        : counts.fortnitepublic.week++;        }
             else if (t === '1month')   { used ? counts.fortnitepublic.usedMonth++       : counts.fortnitepublic.month++;       }
             else if (t === 'lifetime') { used ? counts.fortnitepublic.usedLifetime++    : counts.fortnitepublic.lifetime++;    }
+        } else if (k.includes('phantomware-fortniteai')) {
+            if      (t === '1day')     { used ? counts.fortniteai.usedDay++         : counts.fortniteai.day++;         }
+            else if (t === '1week')    { used ? counts.fortniteai.usedWeek++        : counts.fortniteai.week++;        }
+            else if (t === '1month')   { used ? counts.fortniteai.usedMonth++       : counts.fortniteai.month++;       }
+            else if (t === 'lifetime') { used ? counts.fortniteai.usedLifetime++    : counts.fortniteai.lifetime++;    }
         } else if (k.includes('tempspoofer')) {
             if      (t === 'onetime')  { used ? counts.tempSpoofer.usedOnetime++  : counts.tempSpoofer.onetime++;  }
             else if (t === 'lifetime') { used ? counts.tempSpoofer.usedLifetime++ : counts.tempSpoofer.lifetime++; }
@@ -1431,6 +1437,7 @@ app.post('/admin/verify-key', (req, res) => {
     else if (k.includes('permspoofer'))              product = 'permSpoofer';
     else if (k.includes('phantomware-retrac'))       product = 'retrac';
     else if (k.includes('phantomware-fortnitepublic'))       product = 'fortnitepublic';
+    else if (k.includes('phantomware-fortniteai'))       product = 'fortniteai';
 
     // Normalise duration label
     const durationMap = {
@@ -1494,6 +1501,7 @@ app.post('/admin/lookup-discord', (req, res) => {
     else if (k.includes('permspoofer'))          product = 'permSpoofer';
     else if (k.includes('phantomware-retrac'))       product = 'retrac';
     else if (k.includes('phantomware-fortnitepublic'))       product = 'fortnitepublic';
+    else if (k.includes('phantomware-fortniteai'))       product = 'fortniteai';
 
     const durationMap = {
         '1day': 'Day', '1week': 'Week', '1month': 'Month',
