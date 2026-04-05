@@ -387,8 +387,8 @@ const keyDB = {
 "Phantomware-FortniteAi-Lifetime-68740-7752": { type: "lifetime", expiresAt: null },
 "Phantomware-FortniteAi-Lifetime-24891-5520": { type: "lifetime", expiresAt: null },
 "Phantomware-FortniteAi-Lifetime-93014-6679": { type: "lifetime", expiresAt: null },
-"Phantomware-FortniteAi-Lifetime-57122-4413": { type: "lifetime", expiresAt: null },
-"Phantomware-FortniteAi-Lifetime-80431-9926": { type: "lifetime", expiresAt: null },
+"Phantomware-FortniteAi-Lifetime-57122-4414": { type: "lifetime", expiresAt: null },
+"Phantomware-FortniteAi-Lifetime-80431-9927": { type: "lifetime", expiresAt: null },
 
   // ── Phantomware R6 1day ───────────────────────────────────
   "Phantomware-R6-day-91347-5521": { type: "1day", expiresAt: null },
