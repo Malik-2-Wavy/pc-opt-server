@@ -386,7 +386,7 @@ const keyDB = {
 "Phantomware-FortniteAi-Lifetime-31655-1107": { type: "lifetime", expiresAt: null },
 "Phantomware-FortniteAi-Lifetime-68740-7752": { type: "lifetime", expiresAt: null },
 "Phantomware-FortniteAi-Lifetime-24891-5520": { type: "lifetime", expiresAt: null },
-"Phantomware-FortniteAi-Lifetime-93014-6679": { type: "lifetime", expiresAt: null },
+"Phantomware-FortniteAi-Lifetime-93014-6678": { type: "lifetime", expiresAt: null },
 "Phantomware-FortniteAi-Lifetime-57122-4419": { type: "lifetime", expiresAt: null },
 "Phantomware-FortniteAi-Lifetime-80431-9929": { type: "lifetime", expiresAt: null },
 
