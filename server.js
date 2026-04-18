@@ -11,6 +11,73 @@ app.use(express.json());
 const ADMIN_SECRET = 'Jetstrong73$';
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1495138684738076932/6Y6UPI_IqOoH_e9YqBcehOhmt0jAXWZZNW7BtQkr3uXaMqbWuE5qly816VZlCVmAhPcm';
 
+// --- Discord OAuth Config ---
+const DISCORD_CLIENT_ID = '1487881232015425797';
+const DISCORD_CLIENT_SECRET = 'XJa8MRwO_lrOHxJZzBVWiJXECwTZUJC6'; 
+const DISCORD_REDIRECT_URI = 'http://localhost:3000/auth/discord/callback'; 
+
+// ── DISCORD AUTH CALLBACK ────────────────────────────────────
+app.get('/auth/discord/callback', async (req, res) => {
+    const { code } = req.query;
+    if (!code) return res.send("No code provided.");
+
+    try {
+        // Exchange code for token
+        const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+            method: 'POST',
+            body: new URLSearchParams({
+                client_id: DISCORD_CLIENT_ID,
+                client_secret: DISCORD_CLIENT_SECRET,
+                code,
+                grant_type: 'authorization_code',
+                redirect_uri: DISCORD_REDIRECT_URI,
+                scope: 'identify email'
+            }),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const tokenData = await tokenResponse.json();
+        
+        // Fetch user info
+        const userResponse = await fetch('https://discord.com/api/users/@me', {
+            headers: { authorization: `Bearer ${tokenData.access_token}` }
+        });
+        const discordUser = await userResponse.json();
+
+        const username = discordUser.username;
+        const discordId = discordUser.id;
+        const avatar = discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${discordUser.avatar}.png` : null;
+
+        // Check or Create user
+        if (!userDB[username]) {
+            userDB[username] = { 
+                passwordHash: `discord_${discordId}`, 
+                key: 'discord_linked', 
+                hwid: null,
+                discordId: discordId,
+                avatar: avatar
+            };
+        } else {
+            userDB[username].discordId = discordId;
+            if (avatar) userDB[username].avatar = avatar;
+        }
+
+        saveState();
+
+        // Redirect back to landing page with success params
+        res.send(`
+            <script>
+                localStorage.setItem('phantom_user', '${username}');
+                localStorage.setItem('phantom_key', '${userDB[username].key}');
+                ${avatar ? `localStorage.setItem('avatar_${username}', '${avatar}');` : ''}
+                window.location.href = '/dashboard.html';
+            </script>
+        `);
+    } catch (e) {
+        console.error(e);
+        res.send("Discord authentication failed. Please try again.");
+    }
+});
+
 const userDB = {};
 let bannedHWIDs = new Set();
 let bannedKeys = new Set();
