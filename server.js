@@ -49,7 +49,7 @@ toSave[key] = {
     boundHWID:       record.boundHWID       || null,
     expiresAt:       record.expiresAt       || null,
     discordUsername: record.discordUsername  || null,
-    discordId:       record.discordId        || null,  // ← add this
+    discordId:       record.discordId        || null,
 };
         }
     }
@@ -57,9 +57,6 @@ toSave[key] = {
 }
 
 // ── KEY DATABASE ──────────────────────────────────────────────
-// ALL timed keys start with expiresAt: null.
-// The timer only starts server-side on first bind, so changing
-// the PC clock does absolutely nothing.
 const keyDB = {
 
   // ── 21Services Optimizer 1day ─────────────────────────────
@@ -928,6 +925,8 @@ app.post('/auth', (req, res) => {
     if (!password || typeof password !== 'string') return res.status(400).json({ success: false, message: "Password missing or invalid." });
     if (!hwid     || typeof hwid     !== 'string') return res.status(400).json({ success: false, message: "HWID missing or invalid." });
 
+    const isWeb = hwid.startsWith('WEB-');
+
     if (action === 'signup') {
         if (!key || typeof key !== 'string') return res.status(400).json({ success: false, message: "Key missing or invalid." });
         if (userDB[username]) return res.json({ success: false, message: "Username already exists." });
@@ -936,15 +935,23 @@ app.post('/auth', (req, res) => {
         if (!keyRecord) return res.json({ success: false, message: "Invalid key." });
         if (keyRecord.type !== 'lifetime' && keyRecord.type !== 'onetime' && keyRecord.expiresAt && Date.now() > keyRecord.expiresAt)
             return res.json({ success: false, message: "Key expired." });
-        if (keyRecord.boundHWID && keyRecord.boundHWID !== hwid)
+            
+        // HWID Match check - ignore if it's a web registration
+        if (keyRecord.boundHWID && keyRecord.boundHWID !== hwid && !isWeb)
             return res.json({ success: false, message: "Key is already bound to another device." });
-        if (!keyRecord.boundHWID) { keyRecord.boundHWID = hwid; saveState(); }
+            
+        // Only bind HWID if it's an actual PC loader, skip binding if it's WEB
+        if (!keyRecord.boundHWID && !isWeb) { 
+            keyRecord.boundHWID = hwid; 
+            saveState(); 
+        }
 
-        userDB[username] = { passwordHash: password, key, hwid };
+        // Save user, if it's web we don't lock their HWID yet so they can login from PC later
+        userDB[username] = { passwordHash: password, key, hwid: isWeb ? null : hwid };
         return res.json({ success: true, message: "Signup successful.", key });
     }
 
-    if (bannedHWIDs.has(hwid) || bannedKeys.has(key)) {
+    if ((!isWeb && bannedHWIDs.has(hwid)) || bannedKeys.has(key)) {
         fetch(WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -961,7 +968,15 @@ app.post('/auth', (req, res) => {
         const user = userDB[username];
         if (!user)                          return res.json({ success: false, message: "Username not found." });
         if (user.passwordHash !== password) return res.json({ success: false, message: "Incorrect password." });
-        if (user.hwid !== hwid)             return res.json({ success: false, message: "HWID mismatch." });
+        
+        // If user logs in from PC but their account was created on Web, automatically bind their PC HWID now
+        if (!isWeb && !user.hwid) {
+            user.hwid = hwid;
+        }
+
+        // Check HWID match - bypass if logging in from Website
+        if (user.hwid && user.hwid !== hwid && !isWeb)             
+            return res.json({ success: false, message: "HWID mismatch." });
 
         const keyRecord = keyDB[user.key];
         if (!keyRecord) return res.json({ success: false, message: "Key no longer valid." });
@@ -1433,5 +1448,3 @@ app.post('/admin/lookup-discord', (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
-
-
