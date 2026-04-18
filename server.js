@@ -1592,6 +1592,43 @@ app.post('/approve-order', (req, res) => {
     res.json({ success: true, generatedKey: newKey });
 });
 
+app.post('/check-key', (req, res) => {
+    const { key } = req.body;
+    const record = keyDB[key];
+    if (!record) return res.json({ success: false });
+
+    // Detect product from key name
+    const k = key.toLowerCase();
+    let product = 'unknown';
+    if (k.includes('phantomware-fivem')) product = 'FiveM External';
+    else if (k.includes('phantomware-r6')) product = 'R6 External';
+    else if (k.includes('tempspoofer')) product = 'Temp Spoofer';
+    else if (k.includes('phantomware-fortnitepublic')) product = 'Fortnite Public';
+    else if (k.includes('phantomware-fortniteprivate')) product = 'Fortnite Private';
+    else if (k.includes('phantomware-fortniteai')) product = 'Fortnite AI';
+
+    const isValid = !record.expiresAt || Date.now() < record.expiresAt;
+
+    res.json({
+        success: true,
+        product,
+        isValid,
+        expiresAt: record.expiresAt
+    });
+});
+
+app.get('/get-leaderboard', (req, res) => {
+    const leaderboard = Object.entries(userDB)
+        .map(([username, data]) => ({
+            username,
+            playtime: data.playtimeMinutes || 0
+        }))
+        .sort((a, b) => b.playtime - a.playtime)
+        .slice(0, 5);
+    
+    res.json(leaderboard);
+});
+
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
