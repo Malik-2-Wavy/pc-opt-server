@@ -1501,10 +1501,10 @@ app.post('/admin/lookup-discord', (req, res) => {
 // ── START ─────────────────────────────────────────────────────
 // ── ORDER SYSTEM ────────────────────────────────────────────────
 app.post('/submit-order', (req, res) => {
-    const { username, product, price, method, proof } = req.body;
+    const { username, product, price, duration, method, proof } = req.body;
     const order = {
         id: `ORD-${Date.now()}`,
-        username, product, price, method, proof,
+        username, product, price, duration: duration || 'lifetime', method, proof,
         status: 'PENDING',
         timestamp: new Date().toISOString()
     };
@@ -1536,7 +1536,7 @@ app.post('/approve-order', (req, res) => {
     
     // Add to key database
     keyDB[newKey] = {
-        type: 'lifetime', // Default for now
+        type: order.duration || 'lifetime', 
         boundHWID: null,
         playtimeMinutes: 0
     };
