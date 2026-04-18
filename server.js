@@ -1516,6 +1516,7 @@ app.post('/submit-order', (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            content: `<@1487870022029152336> **-- NEW ORDER PENDING REVIEW --**`,
             embeds: [{
                 title: "💰 NEW MANUAL ORDER RECEIVED",
                 color: 15730141, // Purple
