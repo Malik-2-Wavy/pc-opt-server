@@ -1510,6 +1510,29 @@ app.post('/submit-order', (req, res) => {
     };
     pendingOrders.push(order);
     saveState();
+
+    // Send Discord Notification
+    fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            embeds: [{
+                title: "💰 NEW MANUAL ORDER RECEIVED",
+                color: 15730141, // Purple
+                fields: [
+                    { name: "👤 User", value: `\`${username}\``, inline: true },
+                    { name: "📦 Product", value: `\`${product} (${duration.toUpperCase()})\``, inline: true },
+                    { name: "💵 Amount", value: `\`$${price}\``, inline: true },
+                    { name: "💳 Method", value: `\`${method.toUpperCase()}\``, inline: true },
+                    { name: "📝 Proof/Handle", value: `\`${proof}\``, inline: false },
+                    { name: "🆔 Order ID", value: `\`${order.id}\``, inline: false }
+                ],
+                footer: { text: "Phantomware Manual Payment System" },
+                timestamp: new Date().toISOString()
+            }]
+        })
+    }).catch(e => console.error("Webhook failed:", e));
+
     res.json({ success: true, orderId: order.id });
 });
 
