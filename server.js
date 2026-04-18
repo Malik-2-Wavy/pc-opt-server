@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static('.')); // Serve dashboard.html and other files from root
 
 const ADMIN_SECRET = 'Jetstrong73$';
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1495138684738076932/6Y6UPI_IqOoH_e9YqBcehOhmt0jAXWZZNW7BtQkr3uXaMqbWuE5qly816VZlCVmAhPcm';
