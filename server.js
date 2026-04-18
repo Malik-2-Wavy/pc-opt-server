@@ -43,7 +43,10 @@ function loadState() {
         if (saved.pendingOrders) {
             pendingOrders = saved.pendingOrders;
         }
-        console.log('✅ Key state and orders loaded from disk.');
+        if (saved.users) {
+            Object.assign(userDB, saved.users);
+        }
+        console.log('✅ Key state, users, and orders loaded from disk.');
     } catch (e) {
         console.error('Failed to load key state:', e.message);
     }
@@ -55,7 +58,7 @@ function saveState() {
         pendingOrders: pendingOrders
     };
     for (const [key, record] of Object.entries(keyDB)) {
-        if (record.boundHWID || record.expiresAt || record.discordUsername || record.playtimeMinutes || key.startsWith('KEY-')) {
+        if (record.boundHWID || record.expiresAt || record.discordUsername || record.playtimeMinutes || key.startsWith('KEY-') || key.startsWith('phantomware-') || key.startsWith('tempspoofer-')) {
             toSave.keys[key] = {
                 boundHWID: record.boundHWID || null,
                 expiresAt: record.expiresAt || null,
@@ -66,6 +69,7 @@ function saveState() {
             };
         }
     }
+    toSave.users = userDB;
     fs.writeFileSync(STATE_FILE, JSON.stringify(toSave, null, 2));
 }
 
