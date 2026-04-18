@@ -1535,15 +1535,15 @@ app.post('/approve-order', (req, res) => {
     const newKey = `KEY-${order.product.replace(/\s+/g, '').toUpperCase()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
     
     // Add to key database
-    keyState.keys[newKey] = {
+    keyDB[newKey] = {
         type: 'lifetime', // Default for now
-        hwid: null,
+        boundHWID: null,
         playtimeMinutes: 0
     };
 
     // If user exists, bind it to them immediately
-    if (keyState.users[order.username]) {
-        keyState.users[order.username].keys.push(newKey);
+    if (userDB[order.username]) {
+        userDB[order.username].key = newKey;
     }
 
     saveState();
