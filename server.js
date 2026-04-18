@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 const ADMIN_SECRET = 'Jetstrong73$';
-const WEBHOOK_URL = 'https://discord.com/api/webhooks/1397243251735400459/LSRA9UL-xSA3jy1PnP6XczUKFojgz2PeyjCFdAI1JjbzBuGwxKwgrpyRJ15uEoXwywl9';
+const WEBHOOK_URL = 'https://discord.com/api/webhooks/1495138684738076932/6Y6UPI_IqOoH_e9YqBcehOhmt0jAXWZZNW7BtQkr3uXaMqbWuE5qly816VZlCVmAhPcm';
 
 const userDB = {};
 let bannedHWIDs = new Set();
