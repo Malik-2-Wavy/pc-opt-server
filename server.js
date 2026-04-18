@@ -1704,6 +1704,62 @@ app.get('/get-leaderboard', (req, res) => {
     res.json(leaderboard);
 });
 
+// ── ADMIN ROUTES ──────────────────────────────────────────────
+// Check Admin Middleware
+const isAdmin = (req, res, next) => {
+    const { user } = req.body;
+    if (user && user.toLowerCase() === 'admin') next();
+    else res.status(403).json({ success: false, message: 'Unauthorized' });
+};
+
+app.post('/api/admin/get-data', isAdmin, (req, res) => {
+    res.json({
+        success: true,
+        users: Object.entries(userDB).map(([u, d]) => ({ username: u, hwid: d.hwid || 'N/A', key: d.key })),
+        keys: Object.entries(keyDB).map(([k, d]) => ({ key: k, type: d.type, boundHWID: d.boundHWID || 'None' })),
+        revenue: 12450 // Mock
+    });
+});
+
+app.post('/api/admin/generate-key', isAdmin, (req, res) => {
+    const { product, duration } = req.body;
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let key = 'PHANTOM-';
+    for(let i=0; i<4; i++) {
+        for(let j=0; j<4; j++) key += chars.charAt(Math.floor(Math.random() * chars.length));
+        if(i < 3) key += '-';
+    }
+    keyDB[key] = { type: duration.toLowerCase() };
+    saveState();
+    res.json({ success: true, key });
+});
+
+app.post('/api/admin/ban-hwid', isAdmin, (req, res) => {
+    const { targetHwid } = req.body;
+    if(targetHwid && targetHwid !== 'N/A') {
+        bannedHWIDs.add(targetHwid);
+        res.json({ success: true });
+    } else res.json({ success: false });
+});
+
+app.post('/api/admin/reset-hwid', isAdmin, (req, res) => {
+    const { targetKey } = req.body;
+    if(keyDB[targetKey]) {
+        keyDB[targetKey].boundHWID = null;
+        saveState();
+        res.json({ success: true });
+    } else res.json({ success: false });
+});
+
+app.post('/api/admin/delete-key', isAdmin, (req, res) => {
+    const { targetKey } = req.body;
+    if(keyDB[targetKey]) {
+        delete keyDB[targetKey];
+        saveState();
+        res.json({ success: true });
+    } else res.json({ success: false });
+});
+
 app.listen(PORT, () => {
     console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
