@@ -1555,13 +1555,31 @@ app.post('/approve-order', (req, res) => {
     const order = pendingOrders[orderIndex];
     order.status = 'APPROVED';
 
-    // Generate a new key for this product
-    const newKey = `KEY-${order.product.replace(/\s+/g, '').toUpperCase()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    // Generate a new key with correct prefix for product detection
+    const prefixes = {
+        'Fortnite Public': 'phantomware-fortnitepublic-',
+        'Fortnite Private': 'phantomware-fortniteprivate-',
+        'Fortnite AI': 'phantomware-fortniteai-',
+        'FiveM External': 'phantomware-fivem-',
+        'R6 External': 'phantomware-r6-',
+        'Temp Spoofer': 'tempspoofer-'
+    };
     
+    const prefix = prefixes[order.product] || 'key-';
+    const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const newKey = `${prefix}${randomPart}`;
+    
+    // Calculate Expiry
+    let expiresAt = null;
+    if (order.duration === '1day') expiresAt = Date.now() + (24 * 60 * 60 * 1000);
+    else if (order.duration === '1week') expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000);
+    else if (order.duration === '1month') expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
+
     // Add to key database
     keyDB[newKey] = {
         type: order.duration || 'lifetime', 
         boundHWID: null,
+        expiresAt: expiresAt,
         playtimeMinutes: 0
     };
 
