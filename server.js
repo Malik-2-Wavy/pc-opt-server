@@ -1696,13 +1696,15 @@ app.get('/get-leaderboard', (req, res) => {
     const leaderboard = Object.entries(userDB)
         .map(([username, data]) => ({
             username,
-            playtime: data.playtimeMinutes || 0
+            playtime: data.playtimeMinutes || 0,
+            avatar: data.avatar || null // <--- Add this line
         }))
         .sort((a, b) => b.playtime - a.playtime)
-        .slice(0, 5);
+        .slice(0, 100); // <--- Increase this to 100 so the full page is populated
     
     res.json(leaderboard);
 });
+
 
 // ── ADMIN ROUTES ──────────────────────────────────────────────
 // Check Admin Middleware
