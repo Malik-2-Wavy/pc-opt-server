@@ -902,13 +902,16 @@ app.post('/auth', (req, res) => {
         // Ensure subscriptions object exists
         if (!user.subscriptions) user.subscriptions = {};
 
-        // --- HWID BINDING ---
-        if (!isWeb) {
+        // --- STRICT HWID BINDING ---
+        // We ONLY bind to actual PC HWIDs, never WEB- HWIDs
+        if (hwid && !hwid.startsWith('WEB-')) {
             if (!user.hwid) {
+                console.log(`[SECURITY] Binding user ${username} to PC HWID: ${hwid}`);
                 user.hwid = hwid; 
                 saveState();
             } else if (user.hwid !== hwid) {
-                return res.json({ success: false, message: "HWID mismatch." });
+                console.log(`[SECURITY] HWID Mismatch for ${username}. DB: ${user.hwid}, Client: ${hwid}`);
+                return res.json({ success: false, message: "HWID mismatch. This account is locked to another PC." });
             }
         }
         
@@ -938,6 +941,12 @@ app.post('/redeem', (req, res) => {
     const { username, key, hwid } = req.body;
     const user = findUser(username);
     if (!user) return res.json({ success: false, message: "User not found." });
+
+    // --- HWID PROTECTION ---
+    // If the user is already bound to a PC, they MUST redeem from that same PC
+    if (user.hwid && hwid && !hwid.startsWith('WEB-') && user.hwid !== hwid) {
+        return res.json({ success: false, message: "HWID mismatch. You must redeem keys from your bound PC." });
+    }
 
     const keyData = keyDB[key];
     if (!keyData) return res.json({ success: false, message: "Invalid license key." });
@@ -972,9 +981,17 @@ app.post('/redeem', (req, res) => {
         }
     }
 
+    // Save to user account
     user.subscriptions[product] = expiry;
+    
+    // Bind the user to this HWID if not already bound (and it's a real PC)
+    if (!user.hwid && hwid && !hwid.startsWith('WEB-')) {
+        user.hwid = hwid;
+    }
+
     keyData.usedBy = username;
     keyData.redeemedAt = now;
+    keyData.boundHWID = user.hwid; // Store PC HWID on the key itself for audit
     
     saveState();
     res.json({ success: true, message: `Successfully redeemed ${product}!`, subscriptions: user.subscriptions });
