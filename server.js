@@ -909,16 +909,33 @@ app.post('/auth', (req, res) => {
 
 app.post('/update-password', (req, res) => {
     const { username, currentPassword, newPassword } = req.body;
-    console.log(`[SECURITY] Update attempt for: ${username}`);
+    
     let user = findUser(username);
+    
+    // --- Production Smart Sync ---
+    // If the server was restarted or the DB cleared, this allows the 
+    // browser to "restore" the user record to the server database.
     if (!user) {
-        userDB[username] = { passwordHash: currentPassword, hwid: null, key: 'synced' };
+        console.log(`[SYNC] Restoring user session for: ${username}`);
+        userDB[username] = { 
+            passwordHash: currentPassword, 
+            hwid: null, 
+            key: 'restored_session',
+            restoredAt: new Date().toISOString()
+        };
         user = userDB[username];
     }
-    if (user.passwordHash !== currentPassword) return res.json({ success: false, message: "Current password incorrect." });
+    
+    if (user.passwordHash !== currentPassword) {
+        console.log(`[SECURITY] Failed password update for ${username}: Incorrect current password.`);
+        return res.json({ success: false, message: "Current password incorrect." });
+    }
+    
     user.passwordHash = newPassword;
     saveState();
-    res.json({ success: true, message: "Security settings updated!" });
+    
+    console.log(`[SECURITY] ${username} successfully updated security credentials.`);
+    res.json({ success: true, message: "Security settings successfully synchronized!" });
 });
 
 // ── KEY & LOGIC ───────────────────────────────────────────────
@@ -926,8 +943,16 @@ app.post('/validate-key', (req, res) => {
     const { key, hwid, bind, discordUsername } = req.body;
     const record = keyDB[key];
     if (!record) return res.json({ valid: false, message: "Key not found." });
-    if (record.boundHWID && record.boundHWID !== hwid) return res.json({ valid: false, message: "HWID mismatch." });
-    if (!record.boundHWID && bind) { record.boundHWID = hwid; saveState(); }
+    
+    if (record.boundHWID && record.boundHWID !== hwid) {
+        return res.json({ valid: false, message: "HWID mismatch." });
+    }
+    
+    if (!record.boundHWID && bind) { 
+        record.boundHWID = hwid; 
+        saveState(); 
+    }
+    
     return res.json({ valid: true, message: "Key verified.", type: record.type, boundHWID: record.boundHWID });
 });
 
@@ -942,7 +967,17 @@ app.post('/heartbeat', (req, res) => {
 
 app.post('/submit-order', (req, res) => {
     const { username, product, price, duration, method, proof } = req.body;
-    const order = { id: `ORD-${Date.now()}`, username, product, price, duration, method, proof, status: 'PENDING', timestamp: new Date().toISOString() };
+    const order = { 
+        id: `ORD-${Date.now()}`, 
+        username, 
+        product, 
+        price, 
+        duration, 
+        method, 
+        proof, 
+        status: 'PENDING', 
+        timestamp: new Date().toISOString() 
+    };
     pendingOrders.push(order);
     saveState();
     res.json({ success: true, orderId: order.id });
@@ -960,14 +995,24 @@ app.post('/admin/add-key', (req, res) => {
 app.post('/admin/reset-hwid', (req, res) => {
     const { key, adminSecret } = req.body;
     if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
-    if (keyDB[key]) { keyDB[key].boundHWID = null; saveState(); }
+    if (keyDB[key]) { 
+        keyDB[key].boundHWID = null; 
+        saveState(); 
+    }
     res.json({ success: true });
 });
 
 app.get('/get-leaderboard', (req, res) => {
-    const leaderboard = Object.entries(userDB).map(([u, d]) => ({ username: u, playtime: d.playtimeMinutes || 0, avatar: d.avatar || null }))
-        .sort((a, b) => b.playtime - a.playtime).slice(0, 100);
+    const leaderboard = Object.entries(userDB).map(([u, d]) => ({ 
+        username: u, 
+        playtime: d.playtimeMinutes || 0, 
+        avatar: d.avatar || null 
+    }))
+    .sort((a, b) => b.playtime - a.playtime)
+    .slice(0, 100);
     res.json(leaderboard);
 });
 
-app.listen(PORT, () => console.log(`✅ PhantomWare server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`✅ PhantomWare Production Server running on port ${PORT}`);
+});
