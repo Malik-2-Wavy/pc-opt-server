@@ -1093,6 +1093,26 @@ app.post('/check-hwid-lock', (req, res) => {
     return res.json({ hwidLocked: false, message: "Key is not HWID locked." });
 });
 
+// Add this to your server.js
+app.post('/update-password', (req, res) => {
+    const { username, currentPassword, newPassword } = req.body;
+    const user = userDB[username];
+    
+    if (!user) return res.json({ success: false, message: "User not found." });
+    
+    // Validate the old password before allowing a change
+    if (user.passwordHash !== currentPassword) {
+        return res.json({ success: false, message: "Current password incorrect." });
+    }
+    
+    // Update the server's database
+    user.passwordHash = newPassword;
+    saveState();
+    
+    res.json({ success: true, message: "Password updated on server!" });
+});
+
+
 // ── HEARTBEAT ─────────────────────────────────────────────────
 app.post('/heartbeat', (req, res) => {
     const { hwid, key } = req.body;
