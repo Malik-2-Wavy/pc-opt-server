@@ -885,8 +885,8 @@ app.post('/auth', (req, res) => {
 
     if (action === 'signup') {
         if (findUser(username)) return res.json({ success: false, message: "Username already exists." });
-        // License key is now optional
-        userDB[username] = { passwordHash: password, key: key || 'no_key', hwid: isWeb ? null : hwid };
+        // New users start with 0 products
+        userDB[username] = { passwordHash: password, key: key || 'no_key', hwid: isWeb ? null : hwid, subscriptions: {} };
         saveState();
         return res.json({ success: true, message: "Signup successful!", key: userDB[username].key });
     }
@@ -899,17 +899,20 @@ app.post('/auth', (req, res) => {
         }
         if (user.passwordHash !== password) return res.json({ success: false, message: "Incorrect password." });
         
+        // Ensure subscriptions object exists
+        if (!user.subscriptions) user.subscriptions = {};
+
         // --- HWID BINDING ---
         if (!isWeb) {
             if (!user.hwid) {
-                user.hwid = hwid; // Bind first C++ login
+                user.hwid = hwid; 
                 saveState();
             } else if (user.hwid !== hwid) {
                 return res.json({ success: false, message: "HWID mismatch." });
             }
         }
         
-        return res.json({ success: true, message: "Login successful.", key: user.key });
+        return res.json({ success: true, message: "Login successful.", key: user.key, subscriptions: user.subscriptions });
     }
     return res.status(400).json({ success: false, message: "Invalid action." });
 });
@@ -920,7 +923,7 @@ app.post('/update-password', (req, res) => {
     
     if (!user) {
         console.log(`[SYNC] Restoring user for password update: ${username}`);
-        userDB[username] = { passwordHash: currentPassword, key: 'restored_session', hwid: null };
+        userDB[username] = { passwordHash: currentPassword, key: 'restored_session', hwid: null, subscriptions: {} };
         user = userDB[username];
     }
     
@@ -929,6 +932,52 @@ app.post('/update-password', (req, res) => {
     user.passwordHash = newPassword;
     saveState();
     res.json({ success: true, message: "Security settings updated!" });
+});
+
+app.post('/redeem', (req, res) => {
+    const { username, key, hwid } = req.body;
+    const user = findUser(username);
+    if (!user) return res.json({ success: false, message: "User not found." });
+
+    const keyData = keyDB[key];
+    if (!keyData) return res.json({ success: false, message: "Invalid license key." });
+    if (keyData.usedBy) return res.json({ success: false, message: "Key already redeemed." });
+
+    // Identify product from key name
+    let product = "Unknown";
+    if (key.toLowerCase().includes("fivem")) product = "FiveM";
+    else if (key.toLowerCase().includes("fortnitepublic")) product = "Fortnite Public";
+    else if (key.toLowerCase().includes("fortniteai")) product = "Fortnite Ai";
+    else if (key.toLowerCase().includes("r6")) product = "Rainbow Six Siege";
+    else if (key.toLowerCase().includes("optimizer")) product = "Optimizer";
+    else if (key.toLowerCase().includes("spoofer")) product = "Spoofer";
+    else if (key.toLowerCase().includes("aicheat")) product = "AI Cheat";
+
+    let duration = 0;
+    if (keyData.type === "1day") duration = 24 * 60 * 60 * 1000;
+    else if (keyData.type === "1week") duration = 7 * 24 * 60 * 60 * 1000;
+    else if (keyData.type === "1month") duration = 30 * 24 * 60 * 60 * 1000;
+    else if (keyData.type === "lifetime") duration = -1;
+
+    if (!user.subscriptions) user.subscriptions = {};
+    
+    let now = Date.now();
+    let expiry = (duration === -1) ? -1 : now + duration;
+    
+    // If user already has the product, extend it
+    if (user.subscriptions[product] && user.subscriptions[product] !== -1) {
+        if (duration !== -1) {
+            let currentExpiry = user.subscriptions[product];
+            expiry = Math.max(currentExpiry, now) + duration;
+        }
+    }
+
+    user.subscriptions[product] = expiry;
+    keyData.usedBy = username;
+    keyData.redeemedAt = now;
+    
+    saveState();
+    res.json({ success: true, message: `Successfully redeemed ${product}!`, subscriptions: user.subscriptions });
 });
 
 app.post('/validate-key', (req, res) => {
