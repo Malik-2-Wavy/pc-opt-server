@@ -20,133 +20,9 @@ const DISCORD_CLIENT_ID = '1487881232015425797';
 const DISCORD_CLIENT_SECRET = 'XJa8MRwO_lrOHxJZzBVWiJXECwTZUJC6'; 
 const DISCORD_REDIRECT_URI = 'https://pc-opt-server.onrender.com/auth/discord/callback'; 
 
-// ── DISCORD AUTH CALLBACK ────────────────────────────────────
-app.get('/auth/discord/callback', async (req, res) => {
-    const { code } = req.query;
-    if (!code) return res.send("No code provided.");
-
-    try {
-        // Exchange code for token
-        const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
-            method: 'POST',
-            body: new URLSearchParams({
-                client_id: DISCORD_CLIENT_ID,
-                client_secret: DISCORD_CLIENT_SECRET,
-                code,
-                grant_type: 'authorization_code',
-                redirect_uri: DISCORD_REDIRECT_URI,
-                scope: 'identify email'
-            }),
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-        const tokenData = await tokenResponse.json();
-        
-        // Fetch user info
-        const userResponse = await fetch('https://discord.com/api/users/@me', {
-            headers: { authorization: `Bearer ${tokenData.access_token}` }
-        });
-        const discordUser = await userResponse.json();
-
-        const username = discordUser.username;
-        const discordId = discordUser.id;
-        const avatar = discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${discordUser.avatar}.png` : null;
-
-        // Check or Create user
-        if (!userDB[username]) {
-            userDB[username] = { 
-                passwordHash: `discord_${discordId}`, 
-                key: 'discord_linked', 
-                hwid: null,
-                discordId: discordId,
-                avatar: avatar
-            };
-        } else {
-            userDB[username].discordId = discordId;
-            if (avatar) userDB[username].avatar = avatar;
-        }
-
-        saveState();
-
-        // Redirect back to landing page with success params
-        res.send(`
-            <script>
-                localStorage.setItem('phantom_user', '${username}');
-                localStorage.setItem('phantom_key', '${userDB[username].key}');
-                ${avatar ? `localStorage.setItem('avatar_${username}', '${avatar}');` : ''}
-                window.location.href = '/dashboard.html';
-            </script>
-        `);
-    } catch (e) {
-        console.error(e);
-        res.send("Discord authentication failed. Please try again.");
-    }
-});
-
+// --- Databases ---
 const userDB = {};
-let bannedHWIDs = new Set();
-let bannedKeys = new Set();
-let activeSessions = new Set();
-let keyUsageDB = {};
-let userVersionDB = {};
-let pendingOrders = [];
-
-// ── PERSISTENCE ───────────────────────────────────────────────
-const STATE_FILE = path.join(__dirname, 'key-state.json');
-
-function loadState() {
-    if (!fs.existsSync(STATE_FILE)) return;
-    try {
-        const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-        if (saved.keys) {
-            for (const [key, data] of Object.entries(saved.keys)) {
-                if (keyDB[key]) {
-                    if (data.boundHWID) keyDB[key].boundHWID = data.boundHWID;
-                    if (data.expiresAt) keyDB[key].expiresAt = data.expiresAt;
-                    if (data.discordUsername) keyDB[key].discordUsername = data.discordUsername;
-                    if (data.discordId) keyDB[key].discordId = data.discordId;
-                    if (data.playtimeMinutes) keyDB[key].playtimeMinutes = data.playtimeMinutes;
-                } else {
-                    // It's a key that was generated dynamically
-                    keyDB[key] = data;
-                }
-            }
-        }
-        if (saved.pendingOrders) {
-            pendingOrders = saved.pendingOrders;
-        }
-        if (saved.users) {
-            Object.assign(userDB, saved.users);
-        }
-        console.log('✅ Key state, users, and orders loaded from disk.');
-    } catch (e) {
-        console.error('Failed to load key state:', e.message);
-    }
-}
-
-function saveState() {
-    const toSave = {
-        keys: {},
-        pendingOrders: pendingOrders
-    };
-    for (const [key, record] of Object.entries(keyDB)) {
-        if (record.boundHWID || record.expiresAt || record.discordUsername || record.playtimeMinutes || key.startsWith('KEY-') || key.startsWith('phantomware-') || key.startsWith('tempspoofer-')) {
-            toSave.keys[key] = {
-                boundHWID: record.boundHWID || null,
-                expiresAt: record.expiresAt || null,
-                discordUsername: record.discordUsername || null,
-                discordId: record.discordId || null,
-                playtimeMinutes: record.playtimeMinutes || 0,
-                type: record.type || 'lifetime'
-            };
-        }
-    }
-    toSave.users = userDB;
-    fs.writeFileSync(STATE_FILE, JSON.stringify(toSave, null, 2));
-}
-
-// ── KEY DATABASE ──────────────────────────────────────────────
 const keyDB = {
-
     // ── 21Services Optimizer 1day ─────────────────────────────
     "21Services-1day-Optimizer-83429-1745": { type: "1day", expiresAt: null },
     "21Services-1day-Optimizer-51048-3267": { type: "1day", expiresAt: null },
@@ -916,865 +792,182 @@ const keyDB = {
     "PhantomWare-FortniteExternal-72104-6859": { type: "lifetime", expiresAt: null },
 };
 
-// Load persisted state AFTER keyDB is defined
-loadState();
+let bannedHWIDs = new Set();
+let bannedKeys = new Set();
+let activeSessions = new Set();
+let keyUsageDB = {};
+let userVersionDB = {};
+let pendingOrders = [];
+let g_announcement = { title: '', message: '' };
+let g_maintenance = { enabled: false, message: '' };
+let g_cheatStatus = { status: 'undetected', message: 'All systems operational', updatedAt: new Date().toLocaleString() };
+let ipLogDB = [];
+let directMessages = {};
 
-// ── HELPER ────────────────────────────────────────────────────
-async function sendWebhook(payload) {
+// ── PERSISTENCE ───────────────────────────────────────────────
+const STATE_FILE = path.join(__dirname, 'key-state.json');
+
+const findUserKey = (name) => {
+    if (!name) return null;
+    return Object.keys(userDB).find(k => k.toLowerCase() === name.toLowerCase());
+};
+
+const findUser = (name) => {
+    const key = findUserKey(name);
+    return key ? userDB[key] : null;
+};
+
+function loadState() {
+    if (!fs.existsSync(STATE_FILE)) return;
     try {
-        await fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-    } catch (e) { }
+        const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+        if (saved.users) Object.assign(userDB, saved.users);
+        if (saved.keys) Object.assign(keyDB, saved.keys);
+        if (saved.pendingOrders) pendingOrders = saved.pendingOrders;
+        console.log('✅ State loaded from disk.');
+    } catch (e) { console.error('Failed to load state:', e.message); }
 }
 
-// ── ROOT ──────────────────────────────────────────────────────
-app.get('/', (req, res) => {
-    res.send('PhantomWare Key Server is running.');
-});
+function saveState() {
+    const toSave = { users: userDB, keys: keyDB, pendingOrders: pendingOrders };
+    fs.writeFileSync(STATE_FILE, JSON.stringify(toSave, null, 2));
+}
 
-// ── VALIDATE KEY ──────────────────────────────────────────────
-app.post('/validate-key', (req, res) => {
-    const { key, hwid, bind, discordUsername, discordId } = req.body;
+loadState();
 
-    if (!key || typeof key !== 'string') return res.status(400).json({ valid: false, message: "Key missing or invalid." });
-    if (!hwid || typeof hwid !== 'string') return res.status(400).json({ valid: false, message: "HWID missing or invalid." });
+// ── WEB ROUTES ────────────────────────────────────────────────
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'phantomware.html')));
+app.get('/dashboard.html', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
 
-    const record = keyDB[key];
-    if (!record) return res.json({ valid: false, message: "Key not found." });
+// ── DISCORD AUTH CALLBACK ────────────────────────────────────
+app.get('/auth/discord/callback', async (req, res) => {
+    const { code } = req.query;
+    if (!code) return res.send("No code provided.");
+    try {
+        const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+            method: 'POST',
+            body: new URLSearchParams({
+                client_id: DISCORD_CLIENT_ID, client_secret: DISCORD_CLIENT_SECRET,
+                code, grant_type: 'authorization_code',
+                redirect_uri: DISCORD_REDIRECT_URI, scope: 'identify email'
+            }),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const tokenData = await tokenResponse.json();
+        const userResponse = await fetch('https://discord.com/api/users/@me', {
+            headers: { authorization: `Bearer ${tokenData.access_token}` }
+        });
+        const discordUser = await userResponse.json();
+        const username = discordUser.username;
+        const discordId = discordUser.id;
+        const avatar = discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${discordUser.avatar}.png` : null;
 
-    const isTimed = record.type !== 'lifetime' && record.type !== 'onetime';
-
-    // First activation: start the expiry clock SERVER-SIDE ONLY.
-    // Client clock is completely irrelevant — changing PC time does nothing.
-    if (isTimed && !record.expiresAt && bind === true) {
-        let duration = 0;
-        if (record.type === '1day') duration = 24 * 3600 * 1000;
-        else if (record.type === '1week') duration = 7 * 24 * 3600 * 1000;
-        else if (record.type === '1month') duration = 30 * 24 * 3600 * 1000;
-        record.expiresAt = Date.now() + duration;
-        saveState();
-    }
-
-    // Expiry check uses server Date.now() only
-    if (isTimed && record.expiresAt && Date.now() > record.expiresAt)
-        return res.json({ valid: false, message: "Key expired." });
-
-    // Not yet activated and user isn't binding — preview allowed
-    if (isTimed && !record.expiresAt && bind !== true)
-        return res.json({ valid: true, hwidLocked: false, message: "Key valid but not yet activated." });
-
-    // HWID binding
-    if (!record.boundHWID) {
-        if (bind === true) {
-            record.boundHWID = hwid;
-            saveState();
+        if (!userDB[username]) {
+            userDB[username] = { passwordHash: `discord_${discordId}`, key: 'discord_linked', hwid: null, discordId, avatar };
         } else {
-            return res.json({ valid: true, hwidLocked: false, message: "Key valid but not yet bound." });
+            userDB[username].discordId = discordId;
+            if (avatar) userDB[username].avatar = avatar;
         }
-    } else if (record.boundHWID !== hwid) {
-        return res.json({ valid: false, hwidLocked: true, message: "HWID does not match." });
-    }
-
-    // Discord linkage
-    if (discordUsername && bind) {
-        if (!userDB[discordUsername]) {
-            userDB[discordUsername] = { passwordHash: discordId, key, hwid };
-        } else {
-            userDB[discordUsername].key = key;
-            userDB[discordUsername].hwid = hwid;
-        }
-        record.discordUsername = discordUsername;
         saveState();
-    }
-
-    activeSessions.delete(hwid);
-    activeSessions.add(hwid);
-    setTimeout(() => activeSessions.delete(hwid), 5 * 60 * 1000);
-
-    logIP(req, 'auto-login', hwid, key, `validate (${discordUsername || 'Unlinked'})`);
-
-    return res.json({
-        valid: true,
-        hwidLocked: true,
-        message: "Key valid and HWID verified.",
-        type: record.type,
-        boundHWID: record.boundHWID,
-        expiresAt: record.expiresAt,
-    });
+        res.send(`
+            <script>
+                localStorage.setItem('phantom_user', '${username}');
+                localStorage.setItem('phantom_key', '${userDB[username].key}');
+                ${avatar ? `localStorage.setItem('avatar_${username}', '${avatar}');` : ''}
+                window.location.href = '/dashboard.html';
+            </script>
+        `);
+    } catch (e) { console.error(e); res.send("Discord authentication failed."); }
 });
 
 // ── AUTH (signup / login) ─────────────────────────────────────
 app.post('/auth', (req, res) => {
     const { username, password, key, hwid, action } = req.body;
-    if (!username || typeof username !== 'string') return res.status(400).json({ success: false, message: "Username missing or invalid." });
-    if (!password || typeof password !== 'string') return res.status(400).json({ success: false, message: "Password missing or invalid." });
-    if (!hwid || typeof hwid !== 'string') return res.status(400).json({ success: false, message: "HWID missing or invalid." });
-
-    const isWeb = hwid.startsWith('WEB-');
+    const isWeb = hwid && hwid.startsWith('WEB-');
+    console.log(`[AUTH] Action: ${action} | User: ${username}`);
 
     if (action === 'signup') {
-        if (!key || typeof key !== 'string') return res.status(400).json({ success: false, message: "Key missing or invalid." });
-        if (userDB[username]) return res.json({ success: false, message: "Username already exists." });
-
+        if (findUser(username)) return res.json({ success: false, message: "Username already exists." });
         const keyRecord = keyDB[key];
         if (!keyRecord) return res.json({ success: false, message: "Invalid key." });
-        if (keyRecord.type !== 'lifetime' && keyRecord.type !== 'onetime' && keyRecord.expiresAt && Date.now() > keyRecord.expiresAt)
-            return res.json({ success: false, message: "Key expired." });
-
-        // HWID Match check - ignore if it's a web registration
-        if (keyRecord.boundHWID && keyRecord.boundHWID !== hwid && !isWeb)
-            return res.json({ success: false, message: "Key is already bound to another device." });
-
-        // Only bind HWID if it's an actual PC loader, skip binding if it's WEB
-        if (!keyRecord.boundHWID && !isWeb) {
-            keyRecord.boundHWID = hwid;
-            saveState();
-        }
-
-        // Save user, if it's web we don't lock their HWID yet so they can login from PC later
         userDB[username] = { passwordHash: password, key, hwid: isWeb ? null : hwid };
-        return res.json({ success: true, message: "Signup successful.", key });
-    }
-
-    if ((!isWeb && bannedHWIDs.has(hwid)) || bannedKeys.has(key)) {
-        fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                embeds: [{
-                    title: "🚨 Banned User Login Attempt", color: 16711680, fields: [
-                        { name: "🖥️ HWID", value: `\`${hwid || 'N/A'}\``, inline: false },
-                        { name: "🔑 Key", value: `\`${key || 'N/A'}\``, inline: false },
-                        { name: "⏰ Time", value: new Date().toLocaleString(), inline: false }
-                    ]
-                }]
-            })
-        }).catch(() => { });
-        return res.json({ success: false, banned: true, message: "You are banned." });
+        saveState();
+        return res.json({ success: true, message: "Signup successful!", key });
     }
 
     if (action === 'login') {
-        const user = userDB[username];
+        const user = findUser(username);
         if (!user) return res.json({ success: false, message: "Username not found." });
         if (user.passwordHash !== password) return res.json({ success: false, message: "Incorrect password." });
-
-        // If user logs in from PC but their account was created on Web, automatically bind their PC HWID now
-        if (!isWeb && !user.hwid) {
-            user.hwid = hwid;
-        }
-
-        // Check HWID match - bypass if logging in from Website
-        if (user.hwid && user.hwid !== hwid && !isWeb)
-            return res.json({ success: false, message: "HWID mismatch." });
-
-        const keyRecord = keyDB[user.key];
-        if (!keyRecord) return res.json({ success: false, message: "Key no longer valid." });
-        if (keyRecord.type !== 'lifetime' && keyRecord.type !== 'onetime' && keyRecord.expiresAt && Date.now() > keyRecord.expiresAt)
-            return res.json({ success: false, message: "Key expired." });
-
-        user.lastLogin = new Date().toLocaleString();
-        logIP(req, username, hwid, user.key, 'login');
+        if (!isWeb && !user.hwid) user.hwid = hwid;
+        if (user.hwid && user.hwid !== hwid && !isWeb) return res.json({ success: false, message: "HWID mismatch." });
+        saveState();
         return res.json({ success: true, message: "Login successful.", key: user.key });
     }
-
     return res.status(400).json({ success: false, message: "Invalid action." });
 });
 
-// ── CHECK HWID LOCK ───────────────────────────────────────────
-app.post('/check-hwid-lock', (req, res) => {
-    const { key } = req.body;
-    if (!key || typeof key !== 'string') return res.status(400).json({ error: "Key missing or invalid." });
-    const record = keyDB[key];
-    if (!record) return res.json({ hwidLocked: false, message: "Key not found." });
-    if (record.boundHWID) return res.json({ hwidLocked: true, boundHWID: record.boundHWID });
-    return res.json({ hwidLocked: false, message: "Key is not HWID locked." });
-});
-
-// Add this to your server.js
 app.post('/update-password', (req, res) => {
     const { username, currentPassword, newPassword } = req.body;
-    const user = userDB[username];
-    if (!user) return res.json({ success: false, message: "User not found." });
+    console.log(`[SECURITY] Update attempt for: ${username}`);
+    let user = findUser(username);
+    if (!user) {
+        userDB[username] = { passwordHash: currentPassword, hwid: null, key: 'synced' };
+        user = userDB[username];
+    }
     if (user.passwordHash !== currentPassword) return res.json({ success: false, message: "Current password incorrect." });
     user.passwordHash = newPassword;
     saveState();
-    res.json({ success: true, message: "Password updated on server!" });
+    res.json({ success: true, message: "Security settings updated!" });
 });
 
+// ── KEY & LOGIC ───────────────────────────────────────────────
+app.post('/validate-key', (req, res) => {
+    const { key, hwid, bind, discordUsername } = req.body;
+    const record = keyDB[key];
+    if (!record) return res.json({ valid: false, message: "Key not found." });
+    if (record.boundHWID && record.boundHWID !== hwid) return res.json({ valid: false, message: "HWID mismatch." });
+    if (!record.boundHWID && bind) { record.boundHWID = hwid; saveState(); }
+    return res.json({ valid: true, message: "Key verified.", type: record.type, boundHWID: record.boundHWID });
+});
 
-
-// ── HEARTBEAT ─────────────────────────────────────────────────
 app.post('/heartbeat', (req, res) => {
     const { hwid, key } = req.body;
-    if (!hwid) return res.status(400).json({ ok: false });
-
-    // Track playtime
     if (key && keyDB[key]) {
-        if (!keyDB[key].playtimeMinutes) keyDB[key].playtimeMinutes = 0;
-        keyDB[key].playtimeMinutes += 1;
+        keyDB[key].playtimeMinutes = (keyDB[key].playtimeMinutes || 0) + 1;
         if (keyDB[key].playtimeMinutes % 5 === 0) saveState();
-    } else {
-        const foundKey = Object.values(keyDB).find(r => r.boundHWID === hwid);
-        if (foundKey) {
-            if (!foundKey.playtimeMinutes) foundKey.playtimeMinutes = 0;
-            foundKey.playtimeMinutes += 1;
-            if (foundKey.playtimeMinutes % 5 === 0) saveState();
-        }
     }
-
-    activeSessions.delete(hwid);
-    activeSessions.add(hwid);
-    setTimeout(() => activeSessions.delete(hwid), 5 * 60 * 1000);
     res.json({ ok: true });
 });
 
-// ── BURN ONE-TIME KEY ─────────────────────────────────────────
-app.post('/burn-key', (req, res) => {
-    const { key, hwid } = req.body;
-    if (!key || !hwid) return res.status(400).json({ ok: false });
-    const record = keyDB[key];
-    if (record && record.type === 'onetime' && record.boundHWID === hwid) {
-        delete keyDB[key];
-        const userEntry = Object.entries(userDB).find(([, u]) => u.key === key);
-        if (userEntry) delete userDB[userEntry[0]];
-        saveState();
-        console.log(`🔥 Key ${key} burned after successful spoof.`);
-        return res.json({ ok: true, message: "One-time key consumed." });
-    }
-    res.json({ ok: false, message: "Key not eligible for burning." });
-});
-
-// ── BAN KEY ───────────────────────────────────────────────────
-app.post('/admin/ban-key', (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!key) return res.status(400).json({ success: false, message: "Key required." });
-    const record = keyDB[key];
-    if (!record) return res.json({ success: false, message: "Key not found in keyDB." });
-    bannedKeys.add(key);
-    if (record.boundHWID) bannedHWIDs.add(record.boundHWID);
-    const userEntry = Object.entries(userDB).find(([, u]) => u.key === key);
-    if (userEntry) delete userDB[userEntry[0]];
-    saveState();
-    console.log(`🔨 Key banned: ${key} | HWID: ${record.boundHWID || 'unbound'}`);
-    return res.json({ success: true, message: `Key ${key} banned.`, hwid: record.boundHWID || null });
-});
-
-// ── RESET HWID BY KEY ─────────────────────────────────────────
-app.post('/admin/reset-hwid-by-key', (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!key) return res.status(400).json({ success: false, message: "Key required." });
-    const record = keyDB[key];
-    if (!record) return res.json({ success: false, message: "Key not found in keyDB." });
-    const oldHWID = record.boundHWID || null;
-    record.boundHWID = null;
-    const userEntry = Object.entries(userDB).find(([, u]) => u.key === key);
-    if (userEntry) userEntry[1].hwid = null;
-    saveState();
-    console.log(`🔓 HWID reset for key: ${key} (was: ${oldHWID})`);
-    return res.json({ success: true, message: `HWID reset for ${key}.`, previousHWID: oldHWID });
-});
-
-// ── KEY COUNTS ────────────────────────────────────────────────
-app.post('/admin/key-counts', (req, res) => {
-    const { adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-
-    const counts = {
-        fivem: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-        r6: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-        retrac: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-        fortnitepublic: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-        fortniteai: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-        tempSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 },
-        permSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 }
-    };
-
-    for (const [key, record] of Object.entries(keyDB)) {
-        const k = key.toLowerCase();
-        const t = record.type;
-        const used = !!record.boundHWID;
-        const expired = t !== 'lifetime' && t !== 'onetime' && record.expiresAt && Date.now() > record.expiresAt;
-        if (expired && !used) continue;
-
-        if (k.includes('phantomware-fivem')) {
-            if (t === '1day') { used ? counts.fivem.usedDay++ : counts.fivem.day++; }
-            else if (t === '1week') { used ? counts.fivem.usedWeek++ : counts.fivem.week++; }
-            else if (t === '1month') { used ? counts.fivem.usedMonth++ : counts.fivem.month++; }
-            else if (t === 'lifetime') { used ? counts.fivem.usedLifetime++ : counts.fivem.lifetime++; }
-        } else if (k.includes('phantomware-r6')) {
-            if (t === '1day') { used ? counts.r6.usedDay++ : counts.r6.day++; }
-            else if (t === '1week') { used ? counts.r6.usedWeek++ : counts.r6.week++; }
-            else if (t === '1month') { used ? counts.r6.usedMonth++ : counts.r6.month++; }
-            else if (t === 'lifetime') { used ? counts.r6.usedLifetime++ : counts.r6.lifetime++; }
-        } else if (k.includes('phantomware-retrac')) {
-            if (t === '1day') { used ? counts.retrac.usedDay++ : counts.retrac.day++; }
-            else if (t === '1week') { used ? counts.retrac.usedWeek++ : counts.retrac.week++; }
-            else if (t === '1month') { used ? counts.retrac.usedMonth++ : counts.retrac.month++; }
-            else if (t === 'lifetime') { used ? counts.retrac.usedLifetime++ : counts.retrac.lifetime++; }
-        } else if (k.includes('phantomware-fortnitepublic')) {
-            if (t === '1day') { used ? counts.fortnitepublic.usedDay++ : counts.fortnitepublic.day++; }
-            else if (t === '1week') { used ? counts.fortnitepublic.usedWeek++ : counts.fortnitepublic.week++; }
-            else if (t === '1month') { used ? counts.fortnitepublic.usedMonth++ : counts.fortnitepublic.month++; }
-            else if (t === 'lifetime') { used ? counts.fortnitepublic.usedLifetime++ : counts.fortnitepublic.lifetime++; }
-        } else if (k.includes('phantomware-fortniteai')) {
-            if (t === '1day') { used ? counts.fortniteai.usedDay++ : counts.fortniteai.day++; }
-            else if (t === '1week') { used ? counts.fortniteai.usedWeek++ : counts.fortniteai.week++; }
-            else if (t === '1month') { used ? counts.fortniteai.usedMonth++ : counts.fortniteai.month++; }
-            else if (t === 'lifetime') { used ? counts.fortniteai.usedLifetime++ : counts.fortniteai.lifetime++; }
-        } else if (k.includes('tempspoofer')) {
-            if (t === 'onetime') { used ? counts.tempSpoofer.usedOnetime++ : counts.tempSpoofer.onetime++; }
-            else if (t === 'lifetime') { used ? counts.tempSpoofer.usedLifetime++ : counts.tempSpoofer.lifetime++; }
-        } else if (k.includes('permspoofer')) {
-            if (t === 'onetime') { used ? counts.permSpoofer.usedOnetime++ : counts.permSpoofer.onetime++; }
-            else if (t === 'lifetime') { used ? counts.permSpoofer.usedLifetime++ : counts.permSpoofer.lifetime++; }
-        }
-    }
-
-    res.json({ success: true, ...counts });
-});
-
-// ── USER LOGOUT ───────────────────────────────────────────────
-app.post('/user-logout', (req, res) => {
-    const { username, hwid, key } = req.body;
-    if (!username || !hwid) return res.status(400).json({ ok: false });
-    sendWebhook({
-        embeds: [{
-            title: "🔴 User Offline", color: 15158332, fields: [
-                { name: "👤 Username", value: username, inline: true },
-                { name: "🕐 Time", value: new Date().toLocaleString(), inline: true },
-                { name: "🔑 Key", value: `\`${key}\``, inline: false },
-                { name: "🖥️ HWID", value: `\`${hwid}\``, inline: false }
-            ], footer: { text: "PhantomWare Loader" }
-        }]
-    });
-    res.json({ ok: true });
-});
-
-// ── TRACK KEY USAGE ───────────────────────────────────────────
-app.post('/track-key-usage', (req, res) => {
-    const { key, hwid } = req.body;
-    if (!key || !hwid) return res.status(400).json({ ok: false });
-    if (!keyUsageDB[key]) keyUsageDB[key] = { useCount: 0, hwids: [] };
-    keyUsageDB[key].useCount++;
-    if (!keyUsageDB[key].hwids.includes(hwid)) keyUsageDB[key].hwids.push(hwid);
-    res.json({ ok: true });
-});
-
-// ── KEY STATS ─────────────────────────────────────────────────
-app.post('/admin/key-stats', (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!key) {
-        const stats = Object.entries(keyUsageDB).map(([k, v]) => ({
-            key: k, useCount: v.useCount, uniqueHWIDs: v.hwids.length, hwids: v.hwids
-        }));
-        return res.json({ success: true, stats });
-    }
-    const stat = keyUsageDB[key];
-    if (!stat) return res.json({ success: false, message: "No data for this key." });
-    return res.json({ success: true, key, useCount: stat.useCount, uniqueHWIDs: stat.hwids.length, hwids: stat.hwids });
-});
-
-// ── BAN ───────────────────────────────────────────────────────
-app.post('/admin/ban', (req, res) => {
-    const { hwid, key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (hwid) bannedHWIDs.add(hwid);
-    if (key) bannedKeys.add(key);
-    return res.json({ success: true, message: "Banned successfully." });
-});
-
-// ── UNBAN ─────────────────────────────────────────────────────
-app.post('/admin/unban', (req, res) => {
-    const { hwid, key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (hwid) bannedHWIDs.delete(hwid);
-    if (key) bannedKeys.delete(key);
-    return res.json({ success: true, message: "Unbanned successfully." });
-});
-
-// ── CHECK BAN ─────────────────────────────────────────────────
-app.post('/check-ban', (req, res) => {
-    const { hwid, key } = req.body;
-    if (bannedHWIDs.has(hwid) || bannedKeys.has(key))
-        return res.json({ banned: true, message: "You have been banned from PhantomWare." });
-    return res.json({ banned: false });
-});
-
-// ── ADD KEY ───────────────────────────────────────────────────
-app.post('/admin/add-key', (req, res) => {
-    const { key, type, expiresAt, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!key || typeof key !== 'string') return res.status(400).json({ success: false, message: "Key missing or invalid." });
-    keyDB[key] = { type: type || 'lifetime', boundHWID: null, expiresAt: expiresAt || null };
-    return res.json({ success: true, message: "Key added successfully." });
-});
-
-// ── ANNOUNCEMENT ──────────────────────────────────────────────
-let g_announcement = { title: '', message: '' };
-app.get('/announcement', (req, res) => res.json(g_announcement));
-app.post('/admin/announcement', (req, res) => {
-    const { title, message, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    g_announcement = { title: title || '', message: message || '' };
-    return res.json({ success: true });
-});
-
-// ── MAINTENANCE ───────────────────────────────────────────────
-let g_maintenance = { enabled: false, message: '' };
-app.get('/maintenance', (req, res) => res.json(g_maintenance));
-app.post('/admin/maintenance', (req, res) => {
-    const { enabled, message, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    g_maintenance = { enabled: !!enabled, message: message || '' };
-    return res.json({ success: true });
-});
-
-// ── BAN COUNT ─────────────────────────────────────────────────
-app.post('/admin/ban-count', (req, res) => {
-    const { adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    res.json({ count: bannedHWIDs.size + bannedKeys.size });
-});
-
-// ── REPORT VERSION ────────────────────────────────────────────
-app.post('/report-version', (req, res) => {
-    const { hwid, username, version } = req.body;
-    if (!hwid || !version) return res.status(400).json({ ok: false });
-    userVersionDB[hwid] = { version, username: username || 'Unknown', lastSeen: new Date().toLocaleString() };
-    res.json({ ok: true });
-});
-app.post('/admin/user-versions', (req, res) => {
-    const { adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    res.json({ success: true, users: Object.entries(userVersionDB).map(([hwid, data]) => ({ hwid, ...data })) });
-});
-
-// ── DIRECT MESSAGES ───────────────────────────────────────────
-let directMessages = {};
-app.post('/admin/send-message', (req, res) => {
-    const { hwid, title, message, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!hwid || !message) return res.status(400).json({ success: false, message: "HWID and message required." });
-    directMessages[hwid] = { title: title || 'PhantomWare', message };
-    res.json({ success: true, message: "Message queued for user." });
-});
-app.post('/check-message', (req, res) => {
-    const { hwid } = req.body;
-    if (!hwid) return res.status(400).json({ ok: false });
-    const msg = directMessages[hwid];
-    if (msg) { delete directMessages[hwid]; return res.json({ hasMessage: true, title: msg.title, message: msg.message }); }
-    res.json({ hasMessage: false });
-});
-
-// ── RESET HWID (legacy — by username key in userDB) ──────────
-app.post('/admin/reset-hwid', (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!key) return res.status(400).json({ success: false, message: "Key required." });
-    if (!userDB[key]) return res.json({ success: false, message: "Key not found." });
-    userDB[key].hwid = null;
-    res.json({ success: true, message: `HWID reset for key ${key}. User can now log in on a new PC.` });
-});
-
-// ── REVOKE KEY ────────────────────────────────────────────────
-app.post('/admin/revoke-key', (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!key) return res.status(400).json({ success: false, message: "Key required." });
-    if (!userDB[key]) return res.json({ success: false, message: "Key not found." });
-    delete userDB[key];
-    delete keyUsageDB[key];
-    bannedKeys.delete(key);
-    res.json({ success: true, message: `Key ${key} has been permanently revoked.` });
-});
-
-// ── BAN LIST ──────────────────────────────────────────────────
-app.post('/admin/ban-list', (req, res) => {
-    const { adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    res.json({ success: true, bannedHWIDs: [...bannedHWIDs], bannedKeys: [...bannedKeys] });
-});
-
-// ── SECURE DOWNLOAD ─────────────────────────────────────────────
-app.get('/download', (req, res) => {
-    const { key, product } = req.query;
-    if (!key || !keyDB[key]) {
-        return res.status(403).send('Unauthorized. Valid license key required for download.');
-    }
-
-    // Create a mock buffer representing an executable file
-    const fileContent = `Phantomware Secure Loader Wrapper\nProduct: ${product || 'All'}\nAssigned Key: ${key}\n\n[MOCK EXECUTABLE PAYLOAD]`;
-    res.setHeader('Content-disposition', 'attachment; filename=Phantomware_Loader.exe');
-    res.setHeader('Content-type', 'application/octet-stream');
-    res.send(Buffer.from(fileContent));
-});
-
-// ── KEY INFO ──────────────────────────────────────────────────
-app.post('/key-info', (req, res) => {
-    const key = (req.body.key || '').trim();
-    if (!key) return res.status(400).json({ success: false });
-    const actualKey = Object.keys(keyDB).find(k => k.toLowerCase() === key.toLowerCase());
-    if (!actualKey) return res.json({ success: false, message: 'Key not found.' });
-    const keyData = keyDB[actualKey];
-    const usage = keyUsageDB[actualKey] || { useCount: 0, hwids: [] };
-    const userEntry = Object.entries(userDB).find(([, u]) => u.key === actualKey);
-    res.json({
-        success: true,
-        type: keyData.type || 'lifetime',
-        hwid: keyData.boundHWID ? '🔒 Locked' : '🔓 Unlocked',
-        uses: usage.useCount || 0,
-        hwids: usage.hwids.length || 0,
-        playtime: keyData.playtimeMinutes ? Math.floor(keyData.playtimeMinutes / 60) : 0,
-        injections: userEntry ? (userEntry[1].injections || 0) : 0,
-        lastLogin: userEntry ? (userEntry[1].lastLogin || 'Never') : 'Never',
-        username: userEntry ? userEntry[0] : 'Never logged in',
-        expiresAt: keyData.expiresAt || null,
-    });
-});
-
-// ── CHEAT STATUS ──────────────────────────────────────────────
-let g_cheatStatus = { status: 'undetected', message: 'All systems operational', updatedAt: new Date().toLocaleString() };
-app.get('/cheat-status', (req, res) => res.json(g_cheatStatus));
-app.post('/admin/cheat-status', (req, res) => {
-    const { status, message, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    g_cheatStatus = { status: status || 'undetected', message: message || '', updatedAt: new Date().toLocaleString() };
-    const colors = { undetected: 3066993, updating: 16776960, detected: 16711680 };
-    const emojis = { undetected: '✅', updating: '🔧', detected: '🚨' };
-    sendWebhook({
-        embeds: [{
-            title: `${emojis[status] || '⚡'} Cheat Status Changed`, color: colors[status] || 9807270, fields: [
-                { name: 'Status', value: status.toUpperCase(), inline: true },
-                { name: 'Message', value: message || 'No message', inline: true },
-                { name: 'Time', value: new Date().toLocaleString(), inline: false }
-            ], footer: { text: 'PhantomWare Admin' }
-        }]
-    });
-    res.json({ success: true });
-});
-
-// ── IP LOGGING ────────────────────────────────────────────────
-let ipLogDB = [];
-function logIP(req, username, hwid, key, action) {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'Unknown';
-    ipLogDB.unshift({ ip, username: username || 'Unknown', hwid: hwid || 'Unknown', key: key || 'Unknown', time: new Date().toLocaleString(), action });
-    if (ipLogDB.length > 500) ipLogDB = ipLogDB.slice(0, 500);
-}
-app.post('/admin/ip-logs', (req, res) => {
-    const { adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized." });
-    res.json({ success: true, logs: ipLogDB });
-});
-
-// ── VERIFY KEY (for Discord verification bot) ─────────────────
-app.post('/admin/verify-key', (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET)
-        return res.status(403).json({ valid: false, reason: "Unauthorized." });
-    if (!key)
-        return res.status(400).json({ valid: false, reason: "Key required." });
-
-    const record = keyDB[key];
-    if (!record)
-        return res.json({ valid: false, reason: "Key not found." });
-
-    // Check if banned
-    if (bannedKeys.has(key))
-        return res.json({ valid: false, reason: "Key is banned." });
-    if (record.boundHWID && bannedHWIDs.has(record.boundHWID))
-        return res.json({ valid: false, reason: "Key is banned." });
-
-    // Check expiry (server clock only)
-    const isTimed = record.type !== 'lifetime' && record.type !== 'onetime';
-    if (isTimed && record.expiresAt && Date.now() > record.expiresAt)
-        return res.json({ valid: false, reason: "Key has expired." });
-
-    // Detect product from key name
-    const k = key.toLowerCase();
-    let product = 'unknown';
-    let duration = record.type;
-
-    if (k.includes('phantomware-fivem')) product = 'fivem';
-    else if (k.includes('phantomware-r6')) product = 'r6';
-    else if (k.includes('tempspoofer')) product = 'tempSpoofer';
-    else if (k.includes('permspoofer')) product = 'permSpoofer';
-    else if (k.includes('phantomware-retrac')) product = 'retrac';
-    else if (k.includes('phantomware-fortnitepublic')) product = 'fortnitepublic';
-    else if (k.includes('phantomware-fortniteai')) product = 'fortniteai';
-
-    // Normalise duration label
-    const durationMap = {
-        '1day': 'Day',
-        '1week': 'Week',
-        '1month': 'Month',
-        'lifetime': 'Lifetime',
-        'onetime': 'One-Time',
-    };
-
-    return res.json({
-        valid: true,
-        product,
-        duration: durationMap[record.type] || record.type,
-        hwid: record.boundHWID || null,
-        discordId: record.discordId || null,   // null if not yet Discord-linked
-    });
-});
-
-// ── BIND DISCORD ID TO KEY (for Discord verification bot) ─────
-app.post('/admin/bind-discord', (req, res) => {
-    const { key, discordId, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET)
-        return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!key || !discordId)
-        return res.status(400).json({ success: false, message: "Key and discordId required." });
-
-    const record = keyDB[key];
-    if (!record)
-        return res.json({ success: false, message: "Key not found." });
-
-    // If already bound to a DIFFERENT Discord account, reject
-    if (record.discordId && record.discordId !== discordId)
-        return res.json({ success: false, message: "Key already claimed by another Discord account." });
-
-    record.discordId = discordId;
-    saveState();
-
-    console.log(`🔗 Key ${key} bound to Discord ${discordId}`);
-    return res.json({ success: true });
-});
-
-// ── LOOKUP KEY BY DISCORD ID (for /checkkey command) ──────────
-app.post('/admin/lookup-discord', (req, res) => {
-    const { discordId, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET)
-        return res.status(403).json({ success: false, message: "Unauthorized." });
-    if (!discordId)
-        return res.status(400).json({ success: false, message: "discordId required." });
-
-    const entry = Object.entries(keyDB).find(([, r]) => r.discordId === discordId);
-    if (!entry)
-        return res.json({ found: false });
-
-    const [key, record] = entry;
-    const k = key.toLowerCase();
-    let product = 'unknown';
-    if (k.includes('phantomware-fivem')) product = 'fivem';
-    else if (k.includes('phantomware-r6')) product = 'r6';
-    else if (k.includes('tempspoofer')) product = 'tempSpoofer';
-    else if (k.includes('permspoofer')) product = 'permSpoofer';
-    else if (k.includes('phantomware-retrac')) product = 'retrac';
-    else if (k.includes('phantomware-fortnitepublic')) product = 'fortnitepublic';
-    else if (k.includes('phantomware-fortniteai')) product = 'fortniteai';
-
-    const durationMap = {
-        '1day': 'Day', '1week': 'Week', '1month': 'Month',
-        'lifetime': 'Lifetime', 'onetime': 'One-Time',
-    };
-
-    return res.json({
-        found: true,
-        key,
-        product,
-        duration: durationMap[record.type] || record.type,
-        banned: bannedKeys.has(key) || (record.boundHWID && bannedHWIDs.has(record.boundHWID)) || false,
-    });
-});
-
-// ── START ─────────────────────────────────────────────────────
-// ── ORDER SYSTEM ────────────────────────────────────────────────
 app.post('/submit-order', (req, res) => {
     const { username, product, price, duration, method, proof } = req.body;
-    const order = {
-        id: `ORD-${Date.now()}`,
-        username, product, price, duration: duration || 'lifetime', method, proof,
-        status: 'PENDING',
-        timestamp: new Date().toISOString()
-    };
+    const order = { id: `ORD-${Date.now()}`, username, product, price, duration, method, proof, status: 'PENDING', timestamp: new Date().toISOString() };
     pendingOrders.push(order);
     saveState();
-
-    // Send Discord Notification
-    fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            content: `<@1487870022029152336> **-- NEW ORDER PENDING REVIEW --**`,
-            embeds: [{
-                title: "💰 NEW MANUAL ORDER RECEIVED",
-                color: 15730141, // Purple
-                fields: [
-                    { name: "👤 User", value: `\`${username}\``, inline: true },
-                    { name: "📦 Product", value: `\`${product} (${duration.toUpperCase()})\``, inline: true },
-                    { name: "💵 Amount", value: `\`$${price}\``, inline: true },
-                    { name: "💳 Method", value: `\`${method.toUpperCase()}\``, inline: true },
-                    { name: "📝 Proof/Handle", value: `\`${proof}\``, inline: false },
-                    { name: "🆔 Order ID", value: `\`${order.id}\``, inline: false }
-                ],
-                footer: { text: "Phantomware Manual Payment System" },
-                timestamp: new Date().toISOString()
-            }]
-        })
-    }).catch(e => console.error("Webhook failed:", e));
-
     res.json({ success: true, orderId: order.id });
 });
 
-app.get('/get-orders', (req, res) => {
-    // Basic protection: check for a simple secret header or key
-    const secret = req.headers['x-admin-secret'];
-    if (secret !== 'PHANTOM_ADMIN_99') return res.status(403).json({ error: 'Unauthorized' });
-    
-    res.json(pendingOrders);
-});
-
-app.post('/approve-order', (req, res) => {
-    const { orderId, secret } = req.body;
-    if (secret !== 'PHANTOM_ADMIN_99') return res.status(403).json({ error: 'Unauthorized' });
-
-    const orderIndex = pendingOrders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return res.status(404).json({ error: 'Order not found' });
-
-    const order = pendingOrders[orderIndex];
-    order.status = 'APPROVED';
-
-    // Generate a new key with correct prefix for product detection
-    const prefixes = {
-        'Fortnite Public': 'phantomware-fortnitepublic-',
-        'Fortnite Private': 'phantomware-fortniteprivate-',
-        'Fortnite AI': 'phantomware-fortniteai-',
-        'FiveM External': 'phantomware-fivem-',
-        'R6 External': 'phantomware-r6-',
-        'Temp Spoofer': 'tempspoofer-'
-    };
-    
-    const prefix = prefixes[order.product] || 'key-';
-    const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
-    const newKey = `${prefix}${randomPart}`;
-    
-    // Calculate Expiry
-    let expiresAt = null;
-    if (order.duration === '1day') expiresAt = Date.now() + (24 * 60 * 60 * 1000);
-    else if (order.duration === '1week') expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000);
-    else if (order.duration === '1month') expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
-
-    // Add to key database
-    keyDB[newKey] = {
-        type: order.duration || 'lifetime', 
-        boundHWID: null,
-        expiresAt: expiresAt,
-        playtimeMinutes: 0
-    };
-
-    // If user exists, bind it to them immediately
-    if (userDB[order.username]) {
-        userDB[order.username].key = newKey;
-    }
-
+// ── ADMIN ROUTES ──────────────────────────────────────────────
+app.post('/admin/add-key', (req, res) => {
+    const { key, type, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+    keyDB[key] = { type, boundHWID: null };
     saveState();
-    res.json({ success: true, generatedKey: newKey });
+    res.json({ success: true });
 });
 
-app.post('/check-key', (req, res) => {
-    const { key } = req.body;
-    const record = keyDB[key];
-    if (!record) return res.json({ success: false });
-
-    // Detect product from key name
-    const k = key.toLowerCase();
-    let product = 'unknown';
-    if (k.includes('phantomware-fivem')) product = 'FiveM External';
-    else if (k.includes('phantomware-r6')) product = 'R6 External';
-    else if (k.includes('tempspoofer')) product = 'Temp Spoofer';
-    else if (k.includes('phantomware-fortnitepublic')) product = 'Fortnite Public';
-    else if (k.includes('phantomware-fortniteprivate')) product = 'Fortnite Private';
-    else if (k.includes('phantomware-fortniteai')) product = 'Fortnite AI';
-
-    const isValid = !record.expiresAt || Date.now() < record.expiresAt;
-
-    res.json({
-        success: true,
-        product,
-        isValid,
-        expiresAt: record.expiresAt
-    });
+app.post('/admin/reset-hwid', (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+    if (keyDB[key]) { keyDB[key].boundHWID = null; saveState(); }
+    res.json({ success: true });
 });
 
 app.get('/get-leaderboard', (req, res) => {
-    const leaderboard = Object.entries(userDB)
-        .map(([username, data]) => ({
-            username,
-            playtime: data.playtimeMinutes || 0,
-            avatar: data.avatar || null // <--- Add this line
-        }))
-        .sort((a, b) => b.playtime - a.playtime)
-        .slice(0, 100); // <--- Increase this to 100 so the full page is populated
-    
+    const leaderboard = Object.entries(userDB).map(([u, d]) => ({ username: u, playtime: d.playtimeMinutes || 0, avatar: d.avatar || null }))
+        .sort((a, b) => b.playtime - a.playtime).slice(0, 100);
     res.json(leaderboard);
 });
 
-
-// ── ADMIN ROUTES ──────────────────────────────────────────────
-// Check Admin Middleware
-const isAdmin = (req, res, next) => {
-    const { user } = req.body;
-    if (user && user.toLowerCase() === 'admin') next();
-    else res.status(403).json({ success: false, message: 'Unauthorized' });
-};
-
-app.post('/api/admin/get-data', isAdmin, (req, res) => {
-    res.json({
-        success: true,
-        users: Object.entries(userDB).map(([u, d]) => ({ username: u, hwid: d.hwid || 'N/A', key: d.key })),
-        keys: Object.entries(keyDB).map(([k, d]) => ({ key: k, type: d.type, boundHWID: d.boundHWID || 'None' })),
-        revenue: 12450 // Mock
-    });
-});
-
-app.post('/api/admin/generate-key', isAdmin, (req, res) => {
-    const { product, duration } = req.body;
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let key = 'PHANTOM-';
-    for(let i=0; i<4; i++) {
-        for(let j=0; j<4; j++) key += chars.charAt(Math.floor(Math.random() * chars.length));
-        if(i < 3) key += '-';
-    }
-    keyDB[key] = { type: duration.toLowerCase() };
-    saveState();
-    res.json({ success: true, key });
-});
-
-app.post('/api/admin/ban-hwid', isAdmin, (req, res) => {
-    const { targetHwid } = req.body;
-    if(targetHwid && targetHwid !== 'N/A') {
-        bannedHWIDs.add(targetHwid);
-        res.json({ success: true });
-    } else res.json({ success: false });
-});
-
-app.post('/api/admin/reset-hwid', isAdmin, (req, res) => {
-    const { targetKey } = req.body;
-    if(keyDB[targetKey]) {
-        keyDB[targetKey].boundHWID = null;
-        saveState();
-        res.json({ success: true });
-    } else res.json({ success: false });
-});
-
-app.post('/api/admin/delete-key', isAdmin, (req, res) => {
-    const { targetKey } = req.body;
-    if(keyDB[targetKey]) {
-        delete keyDB[targetKey];
-        saveState();
-        res.json({ success: true });
-    } else res.json({ success: false });
-});
-
-app.listen(PORT, () => {
-    console.log(`✅ PhantomWare server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ PhantomWare server running on port ${PORT}`));
