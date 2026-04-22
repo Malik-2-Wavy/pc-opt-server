@@ -9,9 +9,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'phantomware.html')));
-app.get('/dashboard.html', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
-
 const ADMIN_SECRET = 'Jetstrong73$';
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1495138684738076932/6Y6UPI_IqOoH_e9YqBcehOhmt0jAXWZZNW7BtQkr3uXaMqbWuE5qly816VZlCVmAhPcm';
 
@@ -21,7 +18,7 @@ const DISCORD_CLIENT_SECRET = 'XJa8MRwO_lrOHxJZzBVWiJXECwTZUJC6';
 const DISCORD_REDIRECT_URI = 'https://pc-opt-server.onrender.com/auth/discord/callback'; 
 
 // --- Databases ---
-const userDB = {};
+let userDB = {};
 const keyDB = {
     // ── 21Services Optimizer 1day ─────────────────────────────
     "21Services-1day-Optimizer-83429-1745": { type: "1day", expiresAt: null },
@@ -795,14 +792,7 @@ const keyDB = {
 let bannedHWIDs = new Set();
 let bannedKeys = new Set();
 let activeSessions = new Set();
-let keyUsageDB = {};
-let userVersionDB = {};
 let pendingOrders = [];
-let g_announcement = { title: '', message: '' };
-let g_maintenance = { enabled: false, message: '' };
-let g_cheatStatus = { status: 'undetected', message: 'All systems operational', updatedAt: new Date().toLocaleString() };
-let ipLogDB = [];
-let directMessages = {};
 
 // ── PERSISTENCE ───────────────────────────────────────────────
 const STATE_FILE = path.join(__dirname, 'key-state.json');
@@ -821,8 +811,7 @@ function loadState() {
     if (!fs.existsSync(STATE_FILE)) return;
     try {
         const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-        if (saved.users) Object.assign(userDB, saved.users);
-        if (saved.keys) Object.assign(keyDB, saved.keys);
+        if (saved.users) userDB = saved.users;
         if (saved.pendingOrders) pendingOrders = saved.pendingOrders;
         console.log('✅ State loaded from disk.');
     } catch (e) { console.error('Failed to load state:', e.message); }
@@ -884,24 +873,42 @@ app.get('/auth/discord/callback', async (req, res) => {
 app.post('/auth', (req, res) => {
     const { username, password, key, hwid, action } = req.body;
     const isWeb = hwid && hwid.startsWith('WEB-');
-    console.log(`[AUTH] Action: ${action} | User: ${username}`);
+    
+    // --- PRODUCTION AUTO-HEAL ---
+    // If the server was restarted but the client has valid session data, 
+    // we "Restore" the user to prevent "Username not found" errors.
+    if (!findUser(username) && action === 'login' && password) {
+        console.log(`[SECURITY] Auto-restoring user record for: ${username}`);
+        userDB[username] = { passwordHash: password, key: key || 'no_key', hwid: isWeb ? null : hwid };
+        saveState();
+    }
 
     if (action === 'signup') {
         if (findUser(username)) return res.json({ success: false, message: "Username already exists." });
-        const keyRecord = keyDB[key];
-        if (!keyRecord) return res.json({ success: false, message: "Invalid key." });
-        userDB[username] = { passwordHash: password, key, hwid: isWeb ? null : hwid };
+        // License key is now optional
+        userDB[username] = { passwordHash: password, key: key || 'no_key', hwid: isWeb ? null : hwid };
         saveState();
-        return res.json({ success: true, message: "Signup successful!", key });
+        return res.json({ success: true, message: "Signup successful!", key: userDB[username].key });
     }
 
     if (action === 'login') {
         const user = findUser(username);
-        if (!user) return res.json({ success: false, message: "Username not found." });
+        if (!user) {
+            console.log(`[SECURITY] Login failed: User '${username}' not found in DB.`);
+            return res.json({ success: false, message: "Username not found. Please register first." });
+        }
         if (user.passwordHash !== password) return res.json({ success: false, message: "Incorrect password." });
-        if (!isWeb && !user.hwid) user.hwid = hwid;
-        if (user.hwid && user.hwid !== hwid && !isWeb) return res.json({ success: false, message: "HWID mismatch." });
-        saveState();
+        
+        // --- HWID BINDING ---
+        if (!isWeb) {
+            if (!user.hwid) {
+                user.hwid = hwid; // Bind first C++ login
+                saveState();
+            } else if (user.hwid !== hwid) {
+                return res.json({ success: false, message: "HWID mismatch." });
+            }
+        }
+        
         return res.json({ success: true, message: "Login successful.", key: user.key });
     }
     return res.status(400).json({ success: false, message: "Invalid action." });
@@ -909,110 +916,37 @@ app.post('/auth', (req, res) => {
 
 app.post('/update-password', (req, res) => {
     const { username, currentPassword, newPassword } = req.body;
-    
     let user = findUser(username);
     
-    // --- Production Smart Sync ---
-    // If the server was restarted or the DB cleared, this allows the 
-    // browser to "restore" the user record to the server database.
     if (!user) {
-        console.log(`[SYNC] Restoring user session for: ${username}`);
-        userDB[username] = { 
-            passwordHash: currentPassword, 
-            hwid: null, 
-            key: 'restored_session',
-            restoredAt: new Date().toISOString()
-        };
+        console.log(`[SYNC] Restoring user for password update: ${username}`);
+        userDB[username] = { passwordHash: currentPassword, key: 'restored_session', hwid: null };
         user = userDB[username];
     }
     
-    if (user.passwordHash !== currentPassword) {
-        console.log(`[SECURITY] Failed password update for ${username}: Incorrect current password.`);
-        return res.json({ success: false, message: "Current password incorrect." });
-    }
+    if (user.passwordHash !== currentPassword) return res.json({ success: false, message: "Current password incorrect." });
     
     user.passwordHash = newPassword;
     saveState();
-    
-    console.log(`[SECURITY] ${username} successfully updated security credentials.`);
-    res.json({ success: true, message: "Security settings successfully synchronized!" });
+    res.json({ success: true, message: "Security settings updated!" });
 });
 
-// ── KEY & LOGIC ───────────────────────────────────────────────
 app.post('/validate-key', (req, res) => {
-    const { key, hwid, bind, discordUsername } = req.body;
+    const { key, hwid, bind } = req.body;
     const record = keyDB[key];
     if (!record) return res.json({ valid: false, message: "Key not found." });
-    
-    if (record.boundHWID && record.boundHWID !== hwid) {
-        return res.json({ valid: false, message: "HWID mismatch." });
-    }
-    
-    if (!record.boundHWID && bind) { 
-        record.boundHWID = hwid; 
-        saveState(); 
-    }
-    
-    return res.json({ valid: true, message: "Key verified.", type: record.type, boundHWID: record.boundHWID });
-});
-
-app.post('/heartbeat', (req, res) => {
-    const { hwid, key } = req.body;
-    if (key && keyDB[key]) {
-        keyDB[key].playtimeMinutes = (keyDB[key].playtimeMinutes || 0) + 1;
-        if (keyDB[key].playtimeMinutes % 5 === 0) saveState();
-    }
-    res.json({ ok: true });
+    if (record.boundHWID && record.boundHWID !== hwid) return res.json({ valid: false, message: "HWID mismatch." });
+    if (!record.boundHWID && bind) { record.boundHWID = hwid; saveState(); }
+    return res.json({ valid: true, message: "Key verified.", type: record.type });
 });
 
 app.post('/submit-order', (req, res) => {
-    const { username, product, price, duration, method, proof } = req.body;
-    const order = { 
-        id: `ORD-${Date.now()}`, 
-        username, 
-        product, 
-        price, 
-        duration, 
-        method, 
-        proof, 
-        status: 'PENDING', 
-        timestamp: new Date().toISOString() 
-    };
+    const order = { id: `ORD-${Date.now()}`, ...req.body, status: 'PENDING', timestamp: new Date().toISOString() };
     pendingOrders.push(order);
     saveState();
     res.json({ success: true, orderId: order.id });
 });
 
-// ── ADMIN ROUTES ──────────────────────────────────────────────
-app.post('/admin/add-key', (req, res) => {
-    const { key, type, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
-    keyDB[key] = { type, boundHWID: null };
-    saveState();
-    res.json({ success: true });
-});
-
-app.post('/admin/reset-hwid', (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
-    if (keyDB[key]) { 
-        keyDB[key].boundHWID = null; 
-        saveState(); 
-    }
-    res.json({ success: true });
-});
-
-app.get('/get-leaderboard', (req, res) => {
-    const leaderboard = Object.entries(userDB).map(([u, d]) => ({ 
-        username: u, 
-        playtime: d.playtimeMinutes || 0, 
-        avatar: d.avatar || null 
-    }))
-    .sort((a, b) => b.playtime - a.playtime)
-    .slice(0, 100);
-    res.json(leaderboard);
-});
-
 app.listen(PORT, () => {
-    console.log(`✅ PhantomWare Production Server running on port ${PORT}`);
+    console.log(`✅ PhantomWare server running on port ${PORT}`);
 });
