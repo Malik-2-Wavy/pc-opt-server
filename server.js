@@ -910,8 +910,10 @@ app.post('/auth', (req, res) => {
                 user.hwid = hwid; 
                 saveState();
             } else if (user.hwid !== hwid) {
-                console.log(`[SECURITY] HWID Mismatch for ${username}. DB: ${user.hwid}, Client: ${hwid}`);
-                return res.json({ success: false, message: "HWID mismatch. This account is locked to another PC." });
+                console.log(`[SECURITY] HWID Migration for ${username}. Old: ${user.hwid} -> New: ${hwid}`);
+                user.hwid = hwid;
+                saveState();
+                // We'll allow them to login now since the password was correct
             }
         }
         
@@ -945,7 +947,9 @@ app.post('/redeem', (req, res) => {
     // --- HWID PROTECTION ---
     // If the user is already bound to a PC, they MUST redeem from that same PC
     if (user.hwid && hwid && !hwid.startsWith('WEB-') && user.hwid !== hwid) {
-        return res.json({ success: false, message: "HWID mismatch. You must redeem keys from your bound PC." });
+        console.log(`[SECURITY] Auto-migrating HWID for ${username} during redemption.`);
+        user.hwid = hwid;
+        saveState();
     }
 
     const keyData = keyDB[key];
