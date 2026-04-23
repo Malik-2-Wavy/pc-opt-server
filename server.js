@@ -1,9 +1,53 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// --- Database Connection ---
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://anonymousteam0909_db_user:fils2Qh0ad2l27Jc@phantomware.dqmqy4a.mongodb.net/?appName=Phantomware";
+
+mongoose.connect(MONGODB_URI)
+    .then(() => console.log('🚀 Connected to MongoDB Atlas'))
+    .catch(err => console.error('❌ MongoDB connection error:', err));
+
+// --- Schemas ---
+const UserSchema = new mongoose.Schema({
+    username: { type: String, unique: true, required: true },
+    passwordHash: String,
+    key: String,
+    hwid: String,
+    discordId: String,
+    avatar: String,
+    subscriptions: { type: Map, of: Number, default: {} }
+});
+const User = mongoose.model('User', UserSchema);
+
+const KeySchema = new mongoose.Schema({
+    keyString: { type: String, unique: true, required: true },
+    type: String,
+    expiresAt: Date,
+    usedBy: String,
+    redeemedAt: Date,
+    boundHWID: String
+});
+const Key = mongoose.model('Key', KeySchema);
+
+const OrderSchema = new mongoose.Schema({
+    id: String,
+    username: String,
+    product: String,
+    method: String,
+    proof: String,
+    status: { type: String, default: 'PENDING' },
+    timestamp: { type: Date, default: Date.now },
+    generatedKey: String
+});
+const Order = mongoose.model('Order', OrderSchema);
 
 app.use(cors());
 app.use(express.json());
@@ -17,7 +61,7 @@ const DISCORD_CLIENT_ID = '1487881232015425797';
 const DISCORD_CLIENT_SECRET = 'XJa8MRwO_lrOHxJZzBVWiJXECwTZUJC6'; 
 const DISCORD_REDIRECT_URI = 'https://pc-opt-server.onrender.com/auth/discord/callback'; 
 
-// --- Databases ---
+// --- Legacy Memory Cache (for seeding/migration only) ---
 let userDB = {};
 const keyDB = {
     // ── 21Services Optimizer 1day ─────────────────────────────
@@ -795,34 +839,28 @@ let activeSessions = new Set();
 let pendingOrders = [];
 
 // ── PERSISTENCE ───────────────────────────────────────────────
-const STATE_FILE = path.join(__dirname, 'key-state.json');
-
-const findUserKey = (name) => {
-    if (!name) return null;
-    return Object.keys(userDB).find(k => k.toLowerCase() === name.toLowerCase());
-};
-
-const findUser = (name) => {
-    const key = findUserKey(name);
-    return key ? userDB[key] : null;
-};
-
-function loadState() {
-    if (!fs.existsSync(STATE_FILE)) return;
+const seedDatabase = async () => {
     try {
-        const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-        if (saved.users) userDB = saved.users;
-        if (saved.pendingOrders) pendingOrders = saved.pendingOrders;
-        console.log('✅ State loaded from disk.');
-    } catch (e) { console.error('Failed to load state:', e.message); }
-}
+        const keyCount = await Key.countDocuments();
+        if (keyCount === 0) {
+            console.log('🌱 Seeding database with initial keys...');
+            const keysToInsert = Object.keys(keyDB).map(k => ({
+                keyString: k,
+                type: keyDB[k].type,
+                expiresAt: keyDB[k].expiresAt
+            }));
+            await Key.insertMany(keysToInsert);
+            console.log(`✅ Seeded ${keysToInsert.length} keys.`);
+        }
+    } catch (e) { console.error('Failed to seed database:', e.message); }
+};
 
-function saveState() {
-    const toSave = { users: userDB, keys: keyDB, pendingOrders: pendingOrders };
-    fs.writeFileSync(STATE_FILE, JSON.stringify(toSave, null, 2));
-}
+seedDatabase();
 
-loadState();
+const findUser = async (name) => {
+    if (!name) return null;
+    return await User.findOne({ username: new RegExp('^' + name + '$', 'i') });
+};
 
 // ── WEB ROUTES ────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'phantomware.html')));
@@ -851,17 +889,19 @@ app.get('/auth/discord/callback', async (req, res) => {
         const discordId = discordUser.id;
         const avatar = discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${discordUser.avatar}.png` : null;
 
-        if (!userDB[username]) {
-            userDB[username] = { passwordHash: `discord_${discordId}`, key: 'discord_linked', hwid: null, discordId, avatar };
+        let user = await findUser(username);
+        if (!user) {
+            user = new User({ username, passwordHash: `discord_${discordId}`, key: 'discord_linked', hwid: null, discordId, avatar });
         } else {
-            userDB[username].discordId = discordId;
-            if (avatar) userDB[username].avatar = avatar;
+            user.discordId = discordId;
+            if (avatar) user.avatar = avatar;
         }
-        saveState();
+        await user.save();
+        
         res.send(`
             <script>
                 localStorage.setItem('phantom_user', '${username}');
-                localStorage.setItem('phantom_key', '${userDB[username].key}');
+                localStorage.setItem('phantom_key', '${user.key}');
                 ${avatar ? `localStorage.setItem('avatar_${username}', '${avatar}');` : ''}
                 window.location.href = '/dashboard.html';
             </script>
@@ -870,101 +910,78 @@ app.get('/auth/discord/callback', async (req, res) => {
 });
 
 // ── AUTH (signup / login) ─────────────────────────────────────
-app.post('/auth', (req, res) => {
+app.post('/auth', async (req, res) => {
     const { username, password, key, hwid, action } = req.body;
     const isWeb = hwid && hwid.startsWith('WEB-');
     
-    // --- PRODUCTION AUTO-HEAL ---
-    // If the server was restarted but the client has valid session data, 
-    // we "Restore" the user to prevent "Username not found" errors.
-    if (!findUser(username) && action === 'login' && password) {
-        console.log(`[SECURITY] Auto-restoring user record for: ${username}`);
-        userDB[username] = { passwordHash: password, key: key || 'no_key', hwid: isWeb ? null : hwid };
-        saveState();
-    }
-
     if (action === 'signup') {
-        if (findUser(username)) return res.json({ success: false, message: "Username already exists." });
-        // New users start with 0 products
-        userDB[username] = { passwordHash: password, key: key || 'no_key', hwid: isWeb ? null : hwid, subscriptions: {} };
-        saveState();
-        return res.json({ success: true, message: "Signup successful!", key: userDB[username].key });
+        const existing = await findUser(username);
+        if (existing) return res.json({ success: false, message: "Username already exists." });
+        
+        const newUser = new User({ 
+            username, 
+            passwordHash: password, 
+            key: key || 'no_key', 
+            hwid: isWeb ? null : hwid, 
+            subscriptions: {} 
+        });
+        await newUser.save();
+        return res.json({ success: true, message: "Signup successful!", key: newUser.key });
     }
 
     if (action === 'login') {
-        const user = findUser(username);
+        const user = await findUser(username);
         if (!user) {
-            console.log(`[SECURITY] Login failed: User '${username}' not found in DB.`);
-            return res.json({ success: false, message: "Username not found. Please register first." });
+            return res.json({ success: false, message: "Account not found. Please register first." });
         }
         if (user.passwordHash !== password) return res.json({ success: false, message: "Incorrect password." });
         
-        // Ensure subscriptions object exists
-        if (!user.subscriptions) user.subscriptions = {};
+        if (!user.subscriptions) user.subscriptions = new Map();
 
-        // --- STRICT HWID BINDING ---
-        // We ONLY bind to actual PC HWIDs, never WEB- HWIDs
         if (hwid && !hwid.startsWith('WEB-')) {
-            if (!user.hwid) {
-                console.log(`[SECURITY] Binding user ${username} to PC HWID: ${hwid}`);
+            if (!user.hwid || user.hwid !== hwid) {
                 user.hwid = hwid; 
-                saveState();
-            } else if (user.hwid !== hwid) {
-                console.log(`[SECURITY] HWID Migration for ${username}. Old: ${user.hwid} -> New: ${hwid}`);
-                user.hwid = hwid;
-                saveState();
-                // We'll allow them to login now since the password was correct
+                await user.save();
             }
         }
         
-        return res.json({ success: true, message: "Login successful.", key: user.key, subscriptions: user.subscriptions });
+        return res.json({ success: true, message: "Login successful.", key: user.key, subscriptions: Object.fromEntries(user.subscriptions) });
     }
     return res.status(400).json({ success: false, message: "Invalid action." });
 });
 
-app.post('/update-password', (req, res) => {
+app.post('/update-password', async (req, res) => {
     const { username, currentPassword, newPassword } = req.body;
-    let user = findUser(username);
-    
-    if (!user) {
-        console.log(`[SYNC] Restoring user for password update: ${username}`);
-        userDB[username] = { passwordHash: currentPassword, key: 'restored_session', hwid: null, subscriptions: {} };
-        user = userDB[username];
-    }
-    
-    if (user.passwordHash !== currentPassword) return res.json({ success: false, message: "Current password incorrect." });
+    const user = await findUser(username);
+    if (!user || user.passwordHash !== currentPassword) return res.json({ success: false, message: "Authentication failed." });
     
     user.passwordHash = newPassword;
-    saveState();
-    res.json({ success: true, message: "Security settings updated!" });
+    await user.save();
+    res.json({ success: true, message: "Password updated!" });
 });
 
-app.post('/redeem', (req, res) => {
+app.post('/redeem', async (req, res) => {
     const { username, key, hwid } = req.body;
-    const user = findUser(username);
+    const user = await findUser(username);
     if (!user) return res.json({ success: false, message: "User not found." });
 
-    // --- HWID PROTECTION ---
-    // If the user is already bound to a PC, they MUST redeem from that same PC
     if (user.hwid && hwid && !hwid.startsWith('WEB-') && user.hwid !== hwid) {
-        console.log(`[SECURITY] Auto-migrating HWID for ${username} during redemption.`);
         user.hwid = hwid;
-        saveState();
     }
 
-    const keyData = keyDB[key];
+    const keyData = await Key.findOne({ keyString: key });
     if (!keyData) return res.json({ success: false, message: "Invalid license key." });
     if (keyData.usedBy) return res.json({ success: false, message: "Key already redeemed." });
 
-    // Identify product from key name
     let product = "Unknown";
-    if (key.toLowerCase().includes("fivem")) product = "FiveM";
-    else if (key.toLowerCase().includes("fortnitepublic")) product = "Fortnite Public";
-    else if (key.toLowerCase().includes("fortniteai")) product = "Fortnite Ai";
-    else if (key.toLowerCase().includes("r6")) product = "Rainbow Six Siege";
-    else if (key.toLowerCase().includes("optimizer")) product = "Optimizer";
-    else if (key.toLowerCase().includes("spoofer")) product = "Spoofer";
-    else if (key.toLowerCase().includes("aicheat")) product = "AI Cheat";
+    const kLow = key.toLowerCase();
+    if (kLow.includes("fivem")) product = "FiveM";
+    else if (kLow.includes("fortnitepublic")) product = "Fortnite Public";
+    else if (kLow.includes("fortniteai")) product = "Fortnite Ai";
+    else if (kLow.includes("r6")) product = "Rainbow Six Siege";
+    else if (kLow.includes("optimizer")) product = "Optimizer";
+    else if (kLow.includes("spoofer")) product = "Spoofer";
+    else if (kLow.includes("aicheat")) product = "AI Cheat";
 
     let duration = 0;
     if (keyData.type === "1day") duration = 24 * 60 * 60 * 1000;
@@ -972,49 +989,81 @@ app.post('/redeem', (req, res) => {
     else if (keyData.type === "1month") duration = 30 * 24 * 60 * 60 * 1000;
     else if (keyData.type === "lifetime") duration = -1;
 
-    if (!user.subscriptions) user.subscriptions = {};
+    if (!user.subscriptions) user.subscriptions = new Map();
     
     let now = Date.now();
     let expiry = (duration === -1) ? -1 : now + duration;
     
-    // If user already has the product, extend it
-    if (user.subscriptions[product] && user.subscriptions[product] !== -1) {
+    if (user.subscriptions.has(product) && user.subscriptions.get(product) !== -1) {
         if (duration !== -1) {
-            let currentExpiry = user.subscriptions[product];
-            expiry = Math.max(currentExpiry, now) + duration;
+            expiry = Math.max(user.subscriptions.get(product), now) + duration;
         }
     }
 
-    // Save to user account
-    user.subscriptions[product] = expiry;
-    
-    // Bind the user to this HWID if not already bound (and it's a real PC)
-    if (!user.hwid && hwid && !hwid.startsWith('WEB-')) {
-        user.hwid = hwid;
-    }
+    user.subscriptions.set(product, expiry);
+    if (!user.hwid && hwid && !hwid.startsWith('WEB-')) user.hwid = hwid;
 
     keyData.usedBy = username;
-    keyData.redeemedAt = now;
-    keyData.boundHWID = user.hwid; // Store PC HWID on the key itself for audit
+    keyData.redeemedAt = new Date();
+    keyData.boundHWID = user.hwid;
     
-    saveState();
-    res.json({ success: true, message: `Successfully redeemed ${product}!`, subscriptions: user.subscriptions });
+    await Promise.all([user.save(), keyData.save()]);
+    res.json({ success: true, message: `Successfully redeemed ${product}!`, subscriptions: Object.fromEntries(user.subscriptions) });
 });
 
-app.post('/validate-key', (req, res) => {
+app.post('/validate-key', async (req, res) => {
     const { key, hwid, bind } = req.body;
-    const record = keyDB[key];
+    const record = await Key.findOne({ keyString: key });
     if (!record) return res.json({ valid: false, message: "Key not found." });
     if (record.boundHWID && record.boundHWID !== hwid) return res.json({ valid: false, message: "HWID mismatch." });
-    if (!record.boundHWID && bind) { record.boundHWID = hwid; saveState(); }
+    if (!record.boundHWID && bind) { 
+        record.boundHWID = hwid; 
+        await record.save(); 
+    }
     return res.json({ valid: true, message: "Key verified.", type: record.type });
 });
 
-app.post('/submit-order', (req, res) => {
-    const order = { id: `ORD-${Date.now()}`, ...req.body, status: 'PENDING', timestamp: new Date().toISOString() };
-    pendingOrders.push(order);
-    saveState();
-    res.json({ success: true, orderId: order.id });
+app.post('/submit-order', async (req, res) => {
+    const newOrder = new Order({ id: `ORD-${Date.now()}`, ...req.body });
+    await newOrder.save();
+    res.json({ success: true, orderId: newOrder.id });
+});
+
+// ── ADMIN ROUTES ──────────────────────────────────────────────
+app.get('/admin/orders', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const orders = await Order.find().sort({ timestamp: -1 });
+    res.json(orders);
+});
+
+app.post('/admin/approve-order', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { orderId } = req.body;
+    const order = await Order.findOne({ id: orderId });
+    if (!order) return res.json({ success: false, message: "Order not found." });
+
+    const newKeyStr = `Phantomware-${order.product.replace(/ /g, '')}-Lifetime-${Math.floor(Math.random()*90000+10000)}-${Math.floor(Math.random()*9000+1000)}`;
+    const newKey = new Key({ keyString: newKeyStr, type: "lifetime" });
+    
+    order.status = 'APPROVED';
+    order.generatedKey = newKeyStr;
+    
+    await Promise.all([newKey.save(), order.save()]);
+    res.json({ success: true, key: newKeyStr });
+});
+
+app.post('/admin/add-subscription', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { username, product, durationDays } = req.body; 
+    const user = await findUser(username);
+    if (!user) return res.json({ success: false, message: "User not found." });
+    
+    if (!user.subscriptions) user.subscriptions = new Map();
+    let expiry = (durationDays === -1) ? -1 : Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+    
+    user.subscriptions.set(product, expiry);
+    await user.save();
+    res.json({ success: true, message: `Added ${product} to ${username}` });
 });
 
 app.listen(PORT, () => {
