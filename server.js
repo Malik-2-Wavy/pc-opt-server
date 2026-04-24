@@ -1014,6 +1014,19 @@ app.post('/redeem', async (req, res) => {
     res.json({ success: true, message: `Successfully redeemed ${product}!`, subscriptions: Object.fromEntries(user.subscriptions) });
 });
 
+app.post('/consume', async (req, res) => {
+    const { username, product } = req.body;
+    const user = await findUser(username);
+    if (!user) return res.json({ success: false, message: "User not found." });
+
+    if (user.subscriptions && user.subscriptions.has(product)) {
+        user.subscriptions.delete(product);
+        user.markModified('subscriptions');
+        await user.save();
+    }
+    res.json({ success: true, message: "Product consumed.", subscriptions: Object.fromEntries(user.subscriptions) });
+});
+
 app.post('/validate-key', async (req, res) => {
     const { key, hwid, bind } = req.body;
     const record = await Key.findOne({ keyString: key });
