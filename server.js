@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Database Connection ---
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://anonymousteam0909_db_user:fils2Qh0ad2l27Jc@phantomware.dqmqy4a.mongodb.net/?appName=Phantomware";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://admin:Jetstrong73$@cluster0.phantom.mongodb.net/phantomware?retryWrites=true&w=majority";
 
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('🚀 Connected to MongoDB Atlas'))
@@ -980,6 +980,8 @@ app.post('/redeem', async (req, res) => {
     else if (kLow.includes("fortniteai")) product = "Fortnite Ai";
     else if (kLow.includes("r6")) product = "Rainbow Six Siege";
     else if (kLow.includes("optimizer")) product = "Optimizer";
+    else if (kLow.includes("permspoofer")) product = "Perm Spoofer";
+    else if (kLow.includes("tempspoofer")) product = "Temp Spoofer";
     else if (kLow.includes("spoofer")) product = "Spoofer";
     else if (kLow.includes("aicheat")) product = "AI Cheat";
 
@@ -988,11 +990,12 @@ app.post('/redeem', async (req, res) => {
     else if (keyData.type === "1week") duration = 7 * 24 * 60 * 60 * 1000;
     else if (keyData.type === "1month") duration = 30 * 24 * 60 * 60 * 1000;
     else if (keyData.type === "lifetime") duration = -1;
+    else if (keyData.type === "onetime") duration = -2;
 
     if (!user.subscriptions) user.subscriptions = new Map();
     
     let now = Date.now();
-    let expiry = (duration === -1) ? -1 : now + duration;
+    let expiry = (duration === -1) ? -1 : (duration === -2) ? -2 : now + duration;
     
     if (user.subscriptions.has(product) && user.subscriptions.get(product) !== -1) {
         if (duration !== -1) {
