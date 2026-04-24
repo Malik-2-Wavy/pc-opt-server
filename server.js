@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Database Connection ---
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://anonymousteam0909_db_user:<Jetstrong73$>@phantomware.dqmqy4a.mongodb.net/?appName=Phantomware";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://anonymousteam0909_db_user:<db_password>@phantomware.dqmqy4a.mongodb.net/?appName=Phantomware";
 
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('🚀 Connected to MongoDB Atlas'))
