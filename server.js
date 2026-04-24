@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Database Connection ---
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://anonymousteam0909_db_user:<db_password>@phantomware.dqmqy4a.mongodb.net/?appName=Phantomware";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://anonymousteam0909_db_user:Jetstrong73%24@phantomware.dqmqy4a.mongodb.net/phantomware?retryWrites=true&w=majority&appName=Phantomware";
 
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('🚀 Connected to MongoDB Atlas'))
@@ -863,8 +863,16 @@ const findUser = async (name) => {
 };
 
 // ── WEB ROUTES ────────────────────────────────────────────────
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'phantomware.html')));
-app.get('/dashboard.html', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
+app.get('/', (req, res) => {
+    const p = path.join(__dirname, 'phantomware.html');
+    if (fs.existsSync(p)) res.sendFile(p);
+    else res.status(404).send(`Error: phantomware.html not found in ${__dirname}`);
+});
+app.get('/dashboard.html', (req, res) => {
+    const p = path.join(__dirname, 'dashboard.html');
+    if (fs.existsSync(p)) res.sendFile(p);
+    else res.status(404).send(`Error: dashboard.html not found in ${__dirname}`);
+});
 
 // ── DISCORD AUTH CALLBACK ────────────────────────────────────
 app.get('/auth/discord/callback', async (req, res) => {
