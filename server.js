@@ -39,7 +39,8 @@ const KeySchema = new mongoose.Schema({
     expiresAt: Date,
     usedBy: String,
     redeemedAt: Date,
-    boundHWID: String
+    boundHWID: String,
+    isBanned: { type: Boolean, default: false }
 });
 const Key = mongoose.model('Key', KeySchema);
 
@@ -985,6 +986,7 @@ app.post('/redeem', async (req, res) => {
 
     const keyData = await Key.findOne({ keyString: key });
     if (!keyData) return res.json({ success: false, message: "Invalid license key." });
+    if (keyData.isBanned) return res.json({ success: false, message: "This key has been banned." });
     if (keyData.usedBy) return res.json({ success: false, message: "Key already redeemed." });
 
     let product = "Unknown";
@@ -1045,6 +1047,7 @@ app.post('/validate-key', async (req, res) => {
     const { key, hwid, bind } = req.body;
     const record = await Key.findOne({ keyString: key });
     if (!record) return res.json({ valid: false, message: "Key not found." });
+    if (record.isBanned) return res.json({ valid: false, message: "Key is banned." });
     if (record.boundHWID && record.boundHWID !== hwid) return res.json({ valid: false, message: "HWID mismatch." });
     if (!record.boundHWID && bind) { 
         record.boundHWID = hwid; 
@@ -1071,6 +1074,9 @@ app.post('/check-key', async (req, res) => {
         
         if (!record) {
             return res.json({ success: false, isValid: false, message: "Key not found." });
+        }
+        if (record.isBanned) {
+            return res.json({ success: false, isValid: false, message: "Key is banned." });
         }
 
         let product = "Unknown";
@@ -1139,6 +1145,89 @@ app.post('/admin/add-subscription', async (req, res) => {
     user.subscriptions.set(product, expiry);
     await user.save();
     res.json({ success: true, message: `Added ${product} to ${username}` });
+});
+
+// ── ADMIN BOT ROUTES (Discord Integration) ──────────────────
+app.post('/admin/key-counts', async (req, res) => {
+    const { adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
+
+    try {
+        const keys = await Key.find({});
+        const stats = {
+            fivem: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
+            r6: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
+            retrac: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
+            tempSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 },
+            permSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 }
+        };
+
+        keys.forEach(k => {
+            const ks = k.keyString.toLowerCase();
+            const type = k.type; 
+            const isUsed = !!k.usedBy;
+
+            let product = null;
+            if (ks.includes('fivem')) product = 'fivem';
+            else if (ks.includes('r6')) product = 'r6';
+            else if (ks.includes('fortnitepublic') || ks.includes('retrac')) product = 'retrac';
+            else if (ks.includes('tempspoofer') || ks.includes('spoofer')) product = 'tempSpoofer';
+            else if (ks.includes('permspoofer')) product = 'permSpoofer';
+
+            if (!product) return;
+
+            const target = stats[product];
+            let tKey = type;
+            if (type === '1day') tKey = 'day';
+            else if (type === '1week') tKey = 'week';
+            else if (type === '1month') tKey = 'month';
+
+            if (isUsed) {
+                const usedTKey = 'used' + tKey.charAt(0).toUpperCase() + tKey.slice(1);
+                if (target[usedTKey] !== undefined) target[usedTKey]++;
+            } else {
+                if (target[tKey] !== undefined) target[tKey]++;
+            }
+        });
+
+        res.json(stats);
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/admin/ban-key', async (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
+
+    try {
+        const record = await Key.findOne({ keyString: key });
+        if (!record) return res.json({ success: false, message: "Key not found." });
+
+        record.isBanned = true;
+        await record.save();
+        res.json({ success: true, hwid: record.boundHWID || null });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/admin/reset-hwid-by-key', async (req, res) => {
+    const { key, adminSecret } = req.body;
+    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
+
+    try {
+        const record = await Key.findOne({ keyString: key });
+        if (!record) return res.json({ success: false, message: "Key not found." });
+
+        const previousHWID = record.boundHWID;
+        record.boundHWID = null;
+        await record.save();
+
+        res.json({ success: true, previousHWID: previousHWID || 'none' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
 });
 
 // --- AUTO-UPDATE ENDPOINTS ---
