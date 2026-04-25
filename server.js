@@ -28,6 +28,7 @@ const UserSchema = new mongoose.Schema({
     hwid: String,
     discordId: String,
     avatar: String,
+    playtime: { type: Number, default: 0 },
     subscriptions: { type: Map, of: Number, default: {} }
 });
 const User = mongoose.model('User', UserSchema);
@@ -1050,6 +1051,51 @@ app.post('/validate-key', async (req, res) => {
         await record.save(); 
     }
     return res.json({ valid: true, message: "Key verified.", type: record.type });
+});
+
+app.get('/get-leaderboard', async (req, res) => {
+    try {
+        const users = await User.find({}, 'username playtime')
+            .sort({ playtime: -1 })
+            .limit(100);
+        res.json(users);
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/check-key', async (req, res) => {
+    try {
+        const { key } = req.body;
+        const record = await Key.findOne({ keyString: key });
+        
+        if (!record) {
+            return res.json({ success: false, isValid: false, message: "Key not found." });
+        }
+
+        let product = "Unknown";
+        const kLow = key.toLowerCase();
+        if (kLow.includes("fortnitepublic")) product = "Fortnite Public";
+        else if (kLow.includes("fortniteprivate")) product = "Fortnite Private";
+        else if (kLow.includes("fortniteai")) product = "Fortnite AI";
+        else if (kLow.includes("fivem")) product = "FiveM External";
+        else if (kLow.includes("r6")) product = "R6 External";
+        else if (kLow.includes("tempspoofer")) product = "Temp Spoofer";
+        else if (kLow.includes("permspoofer")) product = "Perm Spoofer";
+        else if (kLow.includes("spoofer")) product = "Temp Spoofer";
+        else if (kLow.includes("aicheat")) product = "AI Cheat";
+        else if (kLow.includes("optimizer")) product = "21Services Optimizer";
+
+        res.json({
+            success: true,
+            isValid: true,
+            product: product,
+            type: record.type,
+            expiresAt: record.expiresAt || null
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
 });
 
 app.post('/submit-order', async (req, res) => {
