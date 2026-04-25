@@ -8,6 +8,11 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- Auto-Update Config ---
+const LATEST_VERSION = "1.1";
+const LOADER_FILENAME = "Phantomware Loader.exe"; 
+// Note: Ensure this file exists in the same directory as server.js
+
 // --- Database Connection ---
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://anonymousteam0909_db_user:iXGz6C8BcZwhAs7C@phantomware.dqmqy4a.mongodb.net/phantomware?retryWrites=true&w=majority&appName=Phantomware";
 
@@ -1088,6 +1093,20 @@ app.post('/admin/add-subscription', async (req, res) => {
     user.subscriptions.set(product, expiry);
     await user.save();
     res.json({ success: true, message: `Added ${product} to ${username}` });
+});
+
+// --- AUTO-UPDATE ENDPOINTS ---
+app.get('/version', (req, res) => {
+    res.send(LATEST_VERSION);
+});
+
+app.get('/download', (req, res) => {
+    const filePath = path.join(__dirname, LOADER_FILENAME);
+    if (fs.existsSync(filePath)) {
+        res.download(filePath, LOADER_FILENAME);
+    } else {
+        res.status(404).json({ success: false, message: "Update file not found on server." });
+    }
 });
 
 app.listen(PORT, () => {
