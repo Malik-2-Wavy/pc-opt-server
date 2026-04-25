@@ -9,8 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Auto-Update Config ---
-const LATEST_VERSION = "1.1";
-const LOADER_FILENAME = "Phantomware Loader.exe"; 
+const LATEST_VERSION = "1.2";
+const LOADER_FILENAME = "Phantomwre Loader.exe"; 
 // Note: Ensure this file exists in the same directory as server.js
 
 // --- Database Connection ---
