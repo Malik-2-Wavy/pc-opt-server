@@ -9,8 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Auto-Update Config ---
-const LATEST_VERSION = "1.2";
-const LOADER_FILENAME = "Phantomwre Loader.exe"; 
+const LATEST_VERSION = "1.1";
+const LOADER_FILENAME = "Phantomware Loader.exe";
 // Note: Ensure this file exists in the same directory as server.js
 
 // --- Database Connection ---
@@ -39,8 +39,7 @@ const KeySchema = new mongoose.Schema({
     expiresAt: Date,
     usedBy: String,
     redeemedAt: Date,
-    boundHWID: String,
-    isBanned: { type: Boolean, default: false }
+    boundHWID: String
 });
 const Key = mongoose.model('Key', KeySchema);
 
@@ -65,8 +64,8 @@ const WEBHOOK_URL = 'https://discord.com/api/webhooks/1495138684738076932/6Y6UPI
 
 // --- Discord OAuth Config ---
 const DISCORD_CLIENT_ID = '1487881232015425797';
-const DISCORD_CLIENT_SECRET = 'XJa8MRwO_lrOHxJZzBVWiJXECwTZUJC6'; 
-const DISCORD_REDIRECT_URI = 'https://pc-opt-server.onrender.com/auth/discord/callback'; 
+const DISCORD_CLIENT_SECRET = 'XJa8MRwO_lrOHxJZzBVWiJXECwTZUJC6';
+const DISCORD_REDIRECT_URI = 'https://pc-opt-server.onrender.com/auth/discord/callback';
 
 // --- Legacy Memory Cache (for seeding/migration only) ---
 let userDB = {};
@@ -912,7 +911,7 @@ app.get('/auth/discord/callback', async (req, res) => {
             if (avatar) user.avatar = avatar;
         }
         await user.save();
-        
+
         res.send(`
             <script>
                 localStorage.setItem('phantom_user', '${username}');
@@ -928,17 +927,17 @@ app.get('/auth/discord/callback', async (req, res) => {
 app.post('/auth', async (req, res) => {
     const { username, password, key, hwid, action } = req.body;
     const isWeb = hwid && hwid.startsWith('WEB-');
-    
+
     if (action === 'signup') {
         const existing = await findUser(username);
         if (existing) return res.json({ success: false, message: "Username already exists." });
-        
-        const newUser = new User({ 
-            username, 
-            passwordHash: password, 
-            key: key || 'no_key', 
-            hwid: isWeb ? null : hwid, 
-            subscriptions: {} 
+
+        const newUser = new User({
+            username,
+            passwordHash: password,
+            key: key || 'no_key',
+            hwid: isWeb ? null : hwid,
+            subscriptions: {}
         });
         await newUser.save();
         return res.json({ success: true, message: "Signup successful!", key: newUser.key });
@@ -950,16 +949,16 @@ app.post('/auth', async (req, res) => {
             return res.json({ success: false, message: "Account not found. Please register first." });
         }
         if (user.passwordHash !== password) return res.json({ success: false, message: "Incorrect password." });
-        
+
         if (!user.subscriptions) user.subscriptions = new Map();
 
         if (hwid && !hwid.startsWith('WEB-')) {
             if (!user.hwid || user.hwid !== hwid) {
-                user.hwid = hwid; 
+                user.hwid = hwid;
                 await user.save();
             }
         }
-        
+
         return res.json({ success: true, message: "Login successful.", key: user.key, subscriptions: Object.fromEntries(user.subscriptions) });
     }
     return res.status(400).json({ success: false, message: "Invalid action." });
@@ -969,7 +968,7 @@ app.post('/update-password', async (req, res) => {
     const { username, currentPassword, newPassword } = req.body;
     const user = await findUser(username);
     if (!user || user.passwordHash !== currentPassword) return res.json({ success: false, message: "Authentication failed." });
-    
+
     user.passwordHash = newPassword;
     await user.save();
     res.json({ success: true, message: "Password updated!" });
@@ -986,7 +985,6 @@ app.post('/redeem', async (req, res) => {
 
     const keyData = await Key.findOne({ keyString: key });
     if (!keyData) return res.json({ success: false, message: "Invalid license key." });
-    if (keyData.isBanned) return res.json({ success: false, message: "This key has been banned." });
     if (keyData.usedBy) return res.json({ success: false, message: "Key already redeemed." });
 
     let product = "Unknown";
@@ -1009,10 +1007,10 @@ app.post('/redeem', async (req, res) => {
     else if (keyData.type === "onetime") duration = -2;
 
     if (!user.subscriptions) user.subscriptions = new Map();
-    
+
     let now = Date.now();
     let expiry = (duration === -1) ? -1 : (duration === -2) ? -2 : now + duration;
-    
+
     if (user.subscriptions.has(product) && user.subscriptions.get(product) !== -1) {
         if (duration !== -1) {
             expiry = Math.max(user.subscriptions.get(product), now) + duration;
@@ -1025,7 +1023,7 @@ app.post('/redeem', async (req, res) => {
     keyData.usedBy = username;
     keyData.redeemedAt = new Date();
     keyData.boundHWID = user.hwid;
-    
+
     await Promise.all([user.save(), keyData.save()]);
     res.json({ success: true, message: `Successfully redeemed ${product}!`, subscriptions: Object.fromEntries(user.subscriptions) });
 });
@@ -1047,11 +1045,10 @@ app.post('/validate-key', async (req, res) => {
     const { key, hwid, bind } = req.body;
     const record = await Key.findOne({ keyString: key });
     if (!record) return res.json({ valid: false, message: "Key not found." });
-    if (record.isBanned) return res.json({ valid: false, message: "Key is banned." });
     if (record.boundHWID && record.boundHWID !== hwid) return res.json({ valid: false, message: "HWID mismatch." });
-    if (!record.boundHWID && bind) { 
-        record.boundHWID = hwid; 
-        await record.save(); 
+    if (!record.boundHWID && bind) {
+        record.boundHWID = hwid;
+        await record.save();
     }
     return res.json({ valid: true, message: "Key verified.", type: record.type });
 });
@@ -1071,12 +1068,9 @@ app.post('/check-key', async (req, res) => {
     try {
         const { key } = req.body;
         const record = await Key.findOne({ keyString: key });
-        
+
         if (!record) {
             return res.json({ success: false, isValid: false, message: "Key not found." });
-        }
-        if (record.isBanned) {
-            return res.json({ success: false, isValid: false, message: "Key is banned." });
         }
 
         let product = "Unknown";
@@ -1123,111 +1117,28 @@ app.post('/admin/approve-order', async (req, res) => {
     const order = await Order.findOne({ id: orderId });
     if (!order) return res.json({ success: false, message: "Order not found." });
 
-    const newKeyStr = `Phantomware-${order.product.replace(/ /g, '')}-Lifetime-${Math.floor(Math.random()*90000+10000)}-${Math.floor(Math.random()*9000+1000)}`;
+    const newKeyStr = `Phantomware-${order.product.replace(/ /g, '')}-Lifetime-${Math.floor(Math.random() * 90000 + 10000)}-${Math.floor(Math.random() * 9000 + 1000)}`;
     const newKey = new Key({ keyString: newKeyStr, type: "lifetime" });
-    
+
     order.status = 'APPROVED';
     order.generatedKey = newKeyStr;
-    
+
     await Promise.all([newKey.save(), order.save()]);
     res.json({ success: true, key: newKeyStr });
 });
 
 app.post('/admin/add-subscription', async (req, res) => {
     if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
-    const { username, product, durationDays } = req.body; 
+    const { username, product, durationDays } = req.body;
     const user = await findUser(username);
     if (!user) return res.json({ success: false, message: "User not found." });
-    
+
     if (!user.subscriptions) user.subscriptions = new Map();
     let expiry = (durationDays === -1) ? -1 : Date.now() + (durationDays * 24 * 60 * 60 * 1000);
-    
+
     user.subscriptions.set(product, expiry);
     await user.save();
     res.json({ success: true, message: `Added ${product} to ${username}` });
-});
-
-// ── ADMIN BOT ROUTES (Discord Integration) ──────────────────
-app.post('/admin/key-counts', async (req, res) => {
-    const { adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
-
-    try {
-        const keys = await Key.find({});
-        const stats = {
-            fivem: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-            r6: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-            retrac: { day: 0, week: 0, month: 0, lifetime: 0, usedDay: 0, usedWeek: 0, usedMonth: 0, usedLifetime: 0 },
-            tempSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 },
-            permSpoofer: { onetime: 0, lifetime: 0, usedOnetime: 0, usedLifetime: 0 }
-        };
-
-        keys.forEach(k => {
-            const ks = k.keyString.toLowerCase();
-            const type = k.type; 
-            const isUsed = !!k.usedBy;
-
-            let product = null;
-            if (ks.includes('fivem')) product = 'fivem';
-            else if (ks.includes('r6')) product = 'r6';
-            else if (ks.includes('fortnitepublic') || ks.includes('retrac')) product = 'retrac';
-            else if (ks.includes('tempspoofer') || ks.includes('spoofer')) product = 'tempSpoofer';
-            else if (ks.includes('permspoofer')) product = 'permSpoofer';
-
-            if (!product) return;
-
-            const target = stats[product];
-            let tKey = type;
-            if (type === '1day') tKey = 'day';
-            else if (type === '1week') tKey = 'week';
-            else if (type === '1month') tKey = 'month';
-
-            if (isUsed) {
-                const usedTKey = 'used' + tKey.charAt(0).toUpperCase() + tKey.slice(1);
-                if (target[usedTKey] !== undefined) target[usedTKey]++;
-            } else {
-                if (target[tKey] !== undefined) target[tKey]++;
-            }
-        });
-
-        res.json(stats);
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-app.post('/admin/ban-key', async (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
-
-    try {
-        const record = await Key.findOne({ keyString: key });
-        if (!record) return res.json({ success: false, message: "Key not found." });
-
-        record.isBanned = true;
-        await record.save();
-        res.json({ success: true, hwid: record.boundHWID || null });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-app.post('/admin/reset-hwid-by-key', async (req, res) => {
-    const { key, adminSecret } = req.body;
-    if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
-
-    try {
-        const record = await Key.findOne({ keyString: key });
-        if (!record) return res.json({ success: false, message: "Key not found." });
-
-        const previousHWID = record.boundHWID;
-        record.boundHWID = null;
-        await record.save();
-
-        res.json({ success: true, previousHWID: previousHWID || 'none' });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
 });
 
 // --- AUTO-UPDATE ENDPOINTS ---
@@ -1242,6 +1153,12 @@ app.get('/download', (req, res) => {
     } else {
         res.status(404).json({ success: false, message: "Update file not found on server." });
     }
+});
+
+const GOFILE_AI_URL = "https://store-na-phx-5.gofile.io/download/web/5f219ddd-3e4c-451d-8bfc-6866ef6af0e7/ai_package.zip";
+
+app.get('/ai-package-link', (req, res) => {
+    res.send(GOFILE_AI_URL);
 });
 
 app.listen(PORT, () => {
