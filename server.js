@@ -991,7 +991,7 @@ app.post('/redeem', async (req, res) => {
     const kLow = key.toLowerCase();
     if (kLow.includes("fivem")) product = "FiveM";
     else if (kLow.includes("fortnitepublic")) product = "Fortnite Public";
-    else if (kLow.includes("fortniteai")) product = "Fortnite Ai";
+    else if (kLow.includes("fortniteai")) product = "Fortnite AI";
     else if (kLow.includes("r6")) product = "Rainbow Six Siege";
     else if (kLow.includes("optimizer")) product = "Optimizer";
     else if (kLow.includes("permspoofer")) product = "Perm Spoofer";
@@ -1155,8 +1155,48 @@ app.get('/download', (req, res) => {
     }
 });
 
-const GOFILE_AI_URL = "https://store-na-phx-5.gofile.io/download/web/5f219ddd-3e4c-451d-8bfc-6866ef6af0e7/ai_package.zip";
+// ── DISCORD BOT INTEGRATION ──────────────────────────────────
+app.post('/admin/key-counts', async (req, res) => {
+    if (req.body.adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
 
+    try {
+        const allKeys = await Key.find({});
+        const stats = {
+            fivem: { day: 0, usedDay: 0, week: 0, usedWeek: 0, month: 0, usedMonth: 0, lifetime: 0, usedLifetime: 0 },
+            r6: { day: 0, usedDay: 0, week: 0, usedWeek: 0, month: 0, usedMonth: 0, lifetime: 0, usedLifetime: 0 },
+            fortniteAi: { day: 0, usedDay: 0, week: 0, usedWeek: 0, month: 0, usedMonth: 0, lifetime: 0, usedLifetime: 0 },
+            tempSpoofer: { onetime: 0, usedOnetime: 0, lifetime: 0, usedLifetime: 0 },
+            permSpoofer: { onetime: 0, usedOnetime: 0, lifetime: 0, usedLifetime: 0 }
+        };
+
+        allKeys.forEach(k => {
+            const str = k.keyString.toLowerCase();
+            const type = k.type;
+            const used = !!k.usedBy;
+
+            let cat = null;
+            if (str.includes('fivem')) cat = stats.fivem;
+            else if (str.includes('r6')) cat = stats.r6;
+            else if (str.includes('fortniteai')) cat = stats.fortniteAi;
+            else if (str.includes('tempspoofer')) cat = stats.tempSpoofer;
+            else if (str.includes('permspoofer')) cat = stats.permSpoofer;
+
+            if (cat) {
+                if (type === '1day') { if (used) cat.usedDay++; else cat.day++; }
+                else if (type === '1week') { if (used) cat.usedWeek++; else cat.week++; }
+                else if (type === '1month') { if (used) cat.usedMonth++; else cat.month++; }
+                else if (type === 'lifetime') { if (used) cat.usedLifetime++; else cat.lifetime++; }
+                else if (type === 'onetime') { if (used) cat.usedOnetime++; else cat.onetime++; }
+            }
+        });
+
+        res.json(stats);
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+const GOFILE_AI_URL = "https://store-na-phx-5.gofile.io/download/web/5f219ddd-3e4c-451d-8bfc-6866ef6af0e7/ai_package.zip";
 app.get('/ai-package-link', (req, res) => {
     res.send(GOFILE_AI_URL);
 });
