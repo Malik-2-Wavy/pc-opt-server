@@ -1170,7 +1170,7 @@ app.post('/admin/key-counts', async (req, res) => {
         };
 
         allKeys.forEach(k => {
-            const str = k.keyString.toLowerCase();
+            const str = (k.keyString || "").toLowerCase();
             const type = k.type;
             const used = !!k.usedBy;
 
@@ -1180,6 +1180,8 @@ app.post('/admin/key-counts', async (req, res) => {
             else if (str.includes('fortniteai')) cat = stats.fortniteAi;
             else if (str.includes('tempspoofer')) cat = stats.tempSpoofer;
             else if (str.includes('permspoofer')) cat = stats.permSpoofer;
+            // Fallback for general spoofer keys
+            else if (str.includes('spoofer') && !str.includes('perm')) cat = stats.tempSpoofer;
 
             if (cat) {
                 if (type === '1day') { if (used) cat.usedDay++; else cat.day++; }
@@ -1194,6 +1196,36 @@ app.post('/admin/key-counts', async (req, res) => {
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
+});
+
+app.post('/admin/ban-key', async (req, res) => {
+    if (req.body.adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
+    const { key } = req.body;
+    try {
+        const record = await Key.findOne({ keyString: key });
+        if (!record) return res.json({ success: false, message: "Key not found." });
+        const hwid = record.boundHWID;
+        if (record.usedBy) await User.deleteOne({ username: record.usedBy });
+        await Key.deleteOne({ keyString: key });
+        res.json({ success: true, hwid: hwid || null });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+app.post('/admin/reset-hwid-by-key', async (req, res) => {
+    if (req.body.adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
+    const { key } = req.body;
+    try {
+        const record = await Key.findOne({ keyString: key });
+        if (!record) return res.json({ success: false, message: "Key not found." });
+        const previousHWID = record.boundHWID;
+        record.boundHWID = null;
+        if (record.usedBy) {
+            const user = await findUser(record.usedBy);
+            if (user) { user.hwid = null; await user.save(); }
+        }
+        await record.save();
+        res.json({ success: true, previousHWID: previousHWID || null });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 const GOFILE_AI_URL = "https://store-na-phx-5.gofile.io/download/web/5f219ddd-3e4c-451d-8bfc-6866ef6af0e7/ai_package.zip";
