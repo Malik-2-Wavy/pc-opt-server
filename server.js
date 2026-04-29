@@ -70,6 +70,13 @@ const ProductStatusSchema = new mongoose.Schema({
 });
 const ProductStatus = mongoose.model('ProductStatus', ProductStatusSchema);
 
+const BroadcastSchema = new mongoose.Schema({
+    title: String,
+    message: String,
+    timestamp: { type: Date, default: Date.now }
+});
+const Broadcast = mongoose.model('Broadcast', BroadcastSchema);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
@@ -1493,11 +1500,19 @@ app.post('/admin/update-product-status', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/admin/delete-product-status', async (req, res) => {
+app.get('/broadcast', async (req, res) => {
     try {
-        const { name, adminSecret } = req.body;
+        const latest = await Broadcast.findOne().sort({ timestamp: -1 });
+        res.json(latest || {});
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/admin/send-broadcast', async (req, res) => {
+    try {
+        const { title, message, adminSecret } = req.body;
         if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
-        await ProductStatus.deleteOne({ name });
+        const b = new Broadcast({ title, message });
+        await b.save();
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
