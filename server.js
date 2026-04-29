@@ -1470,6 +1470,27 @@ app.get('/admin/analytics', async (req, res) => {
         res.json({ growth: last7Days, popularity: productPopularity });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// --- Product Status Endpoints ---
+app.get('/product-status', async (req, res) => {
+    try {
+        const statuses = await ProductStatus.find();
+        res.json(statuses);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/admin/update-product-status', async (req, res) => {
+    try {
+        const { name, enabled, message, adminSecret } = req.body;
+        if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+        
+        await ProductStatus.findOneAndUpdate(
+            { name },
+            { enabled, message },
+            { upsert: true }
+        );
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
