@@ -1443,12 +1443,12 @@ app.get('/admin/analytics', async (req, res) => {
         const users = await User.find();
         const now = new Date();
         const last7Days = [];
-        
+
         for (let i = 6; i >= 0; i--) {
             const date = new Date();
             date.setDate(now.getDate() - i);
             const dateStr = date.toISOString().split('T')[0];
-            
+
             // Note: Since User schema doesn't have createdAt, we'll simulate or use objectId
             // In a real app, you'd have createdAt. For now, we'll return mock growth based on DB size
             // or just return the product popularity.
@@ -1470,6 +1470,7 @@ app.get('/admin/analytics', async (req, res) => {
         res.json({ growth: last7Days, popularity: productPopularity });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 // --- Product Status Endpoints ---
 app.get('/product-status', async (req, res) => {
     try {
