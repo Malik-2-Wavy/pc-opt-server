@@ -1493,6 +1493,15 @@ app.post('/admin/update-product-status', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/admin/delete-product-status', async (req, res) => {
+    try {
+        const { name, adminSecret } = req.body;
+        if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+        await ProductStatus.deleteOne({ name });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
