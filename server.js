@@ -1105,6 +1105,50 @@ app.post('/submit-order', async (req, res) => {
 });
 
 // ── ADMIN ROUTES ──────────────────────────────────────────────
+app.get('/admin/keys', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const keys = await Key.find().sort({ redeemedAt: -1 });
+    res.json(keys);
+});
+
+app.get('/admin/users', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const users = await User.find();
+    res.json(users);
+});
+
+app.post('/admin/create-keys', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { product, type, count } = req.body;
+    const newKeys = [];
+    for (let i = 0; i < count; i++) {
+        const keyStr = `Phantomware-${product.replace(/ /g, '')}-${type}-${Math.floor(Math.random() * 90000 + 10000)}-${Math.floor(Math.random() * 9000 + 1000)}`;
+        newKeys.push({ keyString: keyStr, type });
+    }
+    await Key.insertMany(newKeys);
+    res.json({ success: true, count: newKeys.length });
+});
+
+app.post('/admin/delete-user', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { username } = req.body;
+    await User.deleteOne({ username });
+    await Key.updateMany({ usedBy: username }, { usedBy: null, redeemedAt: null, boundHWID: null });
+    res.json({ success: true });
+});
+
+app.post('/admin/reset-hwid', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { username } = req.body;
+    const user = await findUser(username);
+    if (user) {
+        user.hwid = null;
+        await user.save();
+        await Key.updateMany({ usedBy: username }, { boundHWID: null });
+    }
+    res.json({ success: true });
+});
+
 app.get('/admin/orders', async (req, res) => {
     if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
     const orders = await Order.find().sort({ timestamp: -1 });
@@ -1139,6 +1183,119 @@ app.post('/admin/add-subscription', async (req, res) => {
     user.subscriptions.set(product, expiry);
     await user.save();
     res.json({ success: true, message: `Added ${product} to ${username}` });
+});
+
+// --- Enhanced Admin Endpoints ---
+app.get('/admin/keys', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    try {
+        const keys = await Key.find().sort({ redeemedAt: -1 });
+        res.json(keys);
+    } catch (e) { res.status(500).send(e.message); }
+});
+
+app.get('/admin/users', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    try {
+        const users = await User.find().sort({ username: 1 });
+        res.json(users);
+    } catch (e) { res.status(500).send(e.message); }
+});
+
+app.post('/admin/create-keys', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { product, type, amount } = req.body;
+    const createdKeys = [];
+    for (let i = 0; i < amount; i++) {
+        const keyStr = `Phantomware-${product.replace(/ /g, '')}-${type.charAt(0).toUpperCase() + type.slice(1)}-${Math.floor(Math.random() * 90000 + 10000)}-${Math.floor(Math.random() * 9000 + 1000)}`;
+        const newKey = new Key({ keyString: keyStr, type: type });
+        await newKey.save();
+        createdKeys.push(keyStr);
+    }
+    res.json({ success: true, keys: createdKeys });
+});
+
+app.post('/admin/delete-key', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { keyString } = req.body;
+    await Key.deleteOne({ keyString });
+    res.json({ success: true });
+});
+
+app.post('/admin/reset-hwid', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { username } = req.body;
+    const user = await findUser(username);
+    if (!user) return res.json({ success: false, message: "User not found" });
+    user.hwid = null;
+    await user.save();
+    await Key.updateMany({ usedBy: username }, { boundHWID: null });
+    res.json({ success: true });
+});
+
+app.post('/admin/delete-user', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { username } = req.body;
+    await User.deleteOne({ username });
+    await Key.updateMany({ usedBy: username }, { usedBy: null, redeemedAt: null, boundHWID: null });
+    res.json({ success: true });
+});
+
+
+// --- Enhanced Admin Endpoints ---
+app.get('/admin/keys', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    try {
+        const keys = await Key.find().sort({ redeemedAt: -1 });
+        res.json(keys);
+    } catch (e) { res.status(500).send(e.message); }
+});
+
+app.get('/admin/users', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    try {
+        const users = await User.find().sort({ username: 1 });
+        res.json(users);
+    } catch (e) { res.status(500).send(e.message); }
+});
+
+app.post('/admin/create-keys', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { product, type, amount } = req.body;
+    const createdKeys = [];
+    for (let i = 0; i < amount; i++) {
+        const keyStr = `Phantomware-${product.replace(/ /g, '')}-${type.charAt(0).toUpperCase() + type.slice(1)}-${Math.floor(Math.random() * 90000 + 10000)}-${Math.floor(Math.random() * 9000 + 1000)}`;
+        const newKey = new Key({ keyString: keyStr, type: type });
+        await newKey.save();
+        createdKeys.push(keyStr);
+    }
+    res.json({ success: true, keys: createdKeys });
+});
+
+app.post('/admin/delete-key', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { keyString } = req.body;
+    await Key.deleteOne({ keyString });
+    res.json({ success: true });
+});
+
+app.post('/admin/reset-hwid', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { username } = req.body;
+    const user = await findUser(username);
+    if (!user) return res.json({ success: false, message: "User not found" });
+    user.hwid = null;
+    await user.save();
+    await Key.updateMany({ usedBy: username }, { boundHWID: null });
+    res.json({ success: true });
+});
+
+app.post('/admin/delete-user', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    const { username } = req.body;
+    await User.deleteOne({ username });
+    await Key.updateMany({ usedBy: username }, { usedBy: null, redeemedAt: null, boundHWID: null });
+    res.json({ success: true });
 });
 
 // --- AUTO-UPDATE ENDPOINTS ---
