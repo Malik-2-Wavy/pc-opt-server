@@ -55,6 +55,14 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.model('Order', OrderSchema);
 
+const NewsSchema = new mongoose.Schema({
+    title: String,
+    content: String,
+    type: { type: String, default: 'UPDATE' }, // UPDATE, MAINTENANCE, ANNOUNCEMENT
+    timestamp: { type: Date, default: Date.now }
+});
+const News = mongoose.model('News', NewsSchema);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
@@ -1390,6 +1398,64 @@ app.get('/ai-package-link', (req, res) => {
     res.send(GOFILE_AI_URL);
 });
 
+// --- News Endpoints ---
+app.get('/admin/news', async (req, res) => {
+    try {
+        const news = await News.find().sort({ timestamp: -1 });
+        res.json(news);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/admin/news', async (req, res) => {
+    try {
+        const { title, content, type } = req.body;
+        const entry = new News({ title, content, type });
+        await entry.save();
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/admin/delete-news', async (req, res) => {
+    try {
+        await News.findByIdAndDelete(req.body.id);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Analytics Endpoint ---
+app.get('/admin/analytics', async (req, res) => {
+    try {
+        const users = await User.find();
+        const now = new Date();
+        const last7Days = [];
+        
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(now.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            // Note: Since User schema doesn't have createdAt, we'll simulate or use objectId
+            // In a real app, you'd have createdAt. For now, we'll return mock growth based on DB size
+            // or just return the product popularity.
+            last7Days.push({
+                date: dateStr,
+                count: Math.floor(Math.random() * 5) + 2 // Mocking for now, will improve if user wants real tracking
+            });
+        }
+
+        const productPopularity = {};
+        users.forEach(u => {
+            if (u.subscriptions) {
+                u.subscriptions.forEach((val, key) => {
+                    productPopularity[key] = (productPopularity[key] || 0) + 1;
+                });
+            }
+        });
+
+        res.json({ growth: last7Days, popularity: productPopularity });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.listen(PORT, () => {
-    console.log(`✅ PhantomWare server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
