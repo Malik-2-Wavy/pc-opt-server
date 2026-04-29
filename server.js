@@ -1398,6 +1398,14 @@ app.get('/ai-package-link', (req, res) => {
     res.send(GOFILE_AI_URL);
 });
 
+// --- Public News Endpoint (For the Loader) ---
+app.get('/news', async (req, res) => {
+    try {
+        const news = await News.find().sort({ timestamp: -1 }).limit(5);
+        res.json(news);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- News Endpoints ---
 app.get('/admin/news', async (req, res) => {
     try {
