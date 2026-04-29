@@ -63,6 +63,13 @@ const NewsSchema = new mongoose.Schema({
 });
 const News = mongoose.model('News', NewsSchema);
 
+const ProductStatusSchema = new mongoose.Schema({
+    name: { type: String, unique: true },
+    enabled: { type: Boolean, default: true },
+    message: { type: String, default: 'Product is currently under maintenance.' }
+});
+const ProductStatus = mongoose.model('ProductStatus', ProductStatusSchema);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
