@@ -1517,6 +1517,24 @@ app.post('/admin/send-broadcast', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/admin/clear-broadcast', async (req, res) => {
+    try {
+        const { adminSecret } = req.body;
+        if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+        await Broadcast.deleteMany({});
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/admin/delete-product-status', async (req, res) => {
+    try {
+        const { name, adminSecret } = req.body;
+        if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+        await ProductStatus.deleteOne({ name });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
