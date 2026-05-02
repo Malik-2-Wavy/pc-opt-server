@@ -70,12 +70,13 @@ const ProductStatusSchema = new mongoose.Schema({
 });
 const ProductStatus = mongoose.model('ProductStatus', ProductStatusSchema);
 
-const BroadcastSchema = new mongoose.Schema({
-    title: String,
-    message: String,
-    timestamp: { type: Date, default: Date.now }
-});
 const Broadcast = mongoose.model('Broadcast', BroadcastSchema);
+
+const ConfigSchema = new mongoose.Schema({
+    key: { type: String, unique: true },
+    value: String
+});
+const Config = mongoose.model('Config', ConfigSchema);
 
 app.use(cors());
 app.use(express.json());
@@ -1496,9 +1497,93 @@ app.post('/admin/update-product-status', async (req, res) => {
             { enabled, message },
             { upsert: true }
         );
+
+        // Auto-sync to Discord
+        syncDiscordStatus().catch(err => console.error("Discord Sync Error:", err));
+
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+async function syncDiscordStatus() {
+    const statuses = await ProductStatus.find();
+    const products = [
+        { name: 'Fortnite Public', key: 'FortnitePublic' },
+        { name: 'Fortnite Ai', key: 'FortniteAi' },
+        { name: 'Rainbow Six Siege', key: 'R6' },
+        { name: 'FiveM', key: 'Fivem' },
+        { name: 'Temp Spoofer', key: 'TempSpoofer' },
+        { name: 'Perm Spoofer', key: 'PermSpoofer' }
+    ];
+
+    const fields = products.map(p => {
+        const s = statuses.find(stat => stat.name === p.key) || { enabled: true, message: 'Operational' };
+        return {
+            name: `${s.enabled ? '🟢' : '🔴'} ${p.name}`,
+            value: `Status: **${s.enabled ? 'Undetected' : 'Maintenance'}**\n> *${s.message}*`,
+            inline: true
+        };
+    });
+
+    const embed = {
+        title: "🛡️ PHANTOMWARE | LIVE STATUS OVERVIEW",
+        description: "Real-time operational status for all software modules. This message updates automatically whenever a change is made by the administration.",
+        color: 0x9d50bb,
+        fields: fields,
+        image: { url: "https://pc-opt-server.onrender.com/Phantomware%20Ai.png" },
+        thumbnail: { url: "https://pc-opt-server.onrender.com/pw%20icon.png" },
+        footer: { 
+            text: "Last Synchronized • Phantomware Founders", 
+            icon_url: "https://pc-opt-server.onrender.com/pw%20icon.png" 
+        },
+        timestamp: new Date().toISOString()
+    };
+
+    let messageIdConfig = await Config.findOne({ key: 'statusMessageId' });
+    let url = WEBHOOK_URL;
+    let method = 'POST';
+
+    if (messageIdConfig && messageIdConfig.value) {
+        url = `${WEBHOOK_URL}/messages/${messageIdConfig.value}`;
+        method = 'PATCH';
+    }
+
+    try {
+        const res = await fetch(url + (method === 'POST' ? '?wait=true' : ''), {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ embeds: [embed] })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (method === 'POST' && data.id) {
+                await Config.findOneAndUpdate(
+                    { key: 'statusMessageId' },
+                    { value: data.id },
+                    { upsert: true }
+                );
+            }
+        } else if (res.status === 404 && method === 'PATCH') {
+            // Message was deleted, send a new one
+            const newRes = await fetch(WEBHOOK_URL + '?wait=true', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ embeds: [embed] })
+            });
+            const newData = await newRes.json();
+            if (newData.id) {
+                await Config.findOneAndUpdate(
+                    { key: 'statusMessageId' },
+                    { value: newData.id },
+                    { upsert: true }
+                );
+            }
+        }
+    } catch (e) {
+        console.error("Discord Sync Error:", e);
+    }
+}
 
 app.get('/broadcast', async (req, res) => {
     try {
@@ -1533,53 +1618,6 @@ app.post('/admin/delete-product-status', async (req, res) => {
         await ProductStatus.deleteOne({ name });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.post('/admin/discord-broadcast', async (req, res) => {
-    try {
-        const { channelId, embed, adminSecret } = req.body;
-        if (adminSecret !== process.env.ADMIN_SECRET && adminSecret !== ADMIN_SECRET) {
-            return res.status(403).json({ success: false, message: "Unauthorized" });
-        }
-
-        const token = process.env.VERIFY_BOT_TOKEN;
-        if (!token) return res.status(500).json({ success: false, message: "Bot token not configured" });
-
-        const data = JSON.stringify({ embeds: [embed] });
-        const https = require('https');
-        
-        const options = {
-            hostname: 'discord.com',
-            path: `/api/v10/channels/${channelId}/messages`,
-            method: 'POST',
-            headers: {
-                'Authorization': `Bot ${token}`,
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(data)
-            }
-        };
-
-        const discordReq = https.request(options, (discordRes) => {
-            let responseData = '';
-            discordRes.on('data', (chunk) => { responseData += chunk; });
-            discordRes.on('end', () => {
-                if (discordRes.statusCode >= 200 && discordRes.statusCode < 300) {
-                    res.json({ success: true });
-                } else {
-                    res.status(discordRes.statusCode).json({ success: false, message: "Discord API Error", details: responseData });
-                }
-            });
-        });
-
-        discordReq.on('error', (err) => {
-            res.status(500).json({ success: false, message: err.message });
-        });
-
-        discordReq.write(data);
-        discordReq.end();
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
 });
 
 app.listen(PORT, () => {
