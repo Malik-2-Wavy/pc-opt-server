@@ -70,6 +70,11 @@ const ProductStatusSchema = new mongoose.Schema({
 });
 const ProductStatus = mongoose.model('ProductStatus', ProductStatusSchema);
 
+const BroadcastSchema = new mongoose.Schema({
+    title: String,
+    message: String,
+    timestamp: { type: Date, default: Date.now }
+});
 const Broadcast = mongoose.model('Broadcast', BroadcastSchema);
 
 const ConfigSchema = new mongoose.Schema({
