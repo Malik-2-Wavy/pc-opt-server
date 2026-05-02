@@ -1535,6 +1535,53 @@ app.post('/admin/delete-product-status', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/admin/discord-broadcast', async (req, res) => {
+    try {
+        const { channelId, embed, adminSecret } = req.body;
+        if (adminSecret !== process.env.ADMIN_SECRET && adminSecret !== ADMIN_SECRET) {
+            return res.status(403).json({ success: false, message: "Unauthorized" });
+        }
+
+        const token = process.env.VERIFY_BOT_TOKEN;
+        if (!token) return res.status(500).json({ success: false, message: "Bot token not configured" });
+
+        const data = JSON.stringify({ embeds: [embed] });
+        const https = require('https');
+        
+        const options = {
+            hostname: 'discord.com',
+            path: `/api/v10/channels/${channelId}/messages`,
+            method: 'POST',
+            headers: {
+                'Authorization': `Bot ${token}`,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(data)
+            }
+        };
+
+        const discordReq = https.request(options, (discordRes) => {
+            let responseData = '';
+            discordRes.on('data', (chunk) => { responseData += chunk; });
+            discordRes.on('end', () => {
+                if (discordRes.statusCode >= 200 && discordRes.statusCode < 300) {
+                    res.json({ success: true });
+                } else {
+                    res.status(discordRes.statusCode).json({ success: false, message: "Discord API Error", details: responseData });
+                }
+            });
+        });
+
+        discordReq.on('error', (err) => {
+            res.status(500).json({ success: false, message: err.message });
+        });
+
+        discordReq.write(data);
+        discordReq.end();
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
