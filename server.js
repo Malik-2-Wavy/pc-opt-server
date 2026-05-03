@@ -250,6 +250,91 @@ const keyDB = {
     "Phantomware-Fivem-lifetime-44320-8891": { type: "lifetime", expiresAt: null },
     "Phantomware-Fivem-lifetime-12984-6670": { type: "lifetime", expiresAt: null },
 
+    // ── Phantomware Roblox ────────────────────────────────────
+    "Phantomware-Roblox-Day-14267-7363": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-94603-5801": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-66481-3922": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-55489-8135": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-93444-7932": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-48346-5324": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-79176-8592": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-16844-7622": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-77506-9675": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-94894-9898": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-81815-9458": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-64798-5229": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-75454-5880": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-89625-8108": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-20773-3174": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-24114-2547": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-17347-1594": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-66021-4883": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-60238-8689": { type: "1day", expiresAt: null },
+    "Phantomware-Roblox-Day-21963-5388": { type: "1day", expiresAt: null },
+    
+    "Phantomware-Roblox-Week-94782-8466": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-63145-3377": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-71664-7540": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-37001-5109": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-12647-4448": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-90659-2939": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-26303-4364": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-70886-2471": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-19573-2291": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-59854-8421": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-27345-2219": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-33853-6580": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-54352-8894": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-32405-8642": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-64703-6194": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-78893-4943": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-79560-6352": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-49444-7856": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-89591-3832": { type: "1week", expiresAt: null },
+    "Phantomware-Roblox-Week-78866-2487": { type: "1week", expiresAt: null },
+    
+    "Phantomware-Roblox-Month-44069-6386": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-29575-1714": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-23362-7538": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-20756-6148": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-40550-6040": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-52928-4877": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-12737-8948": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-55721-8612": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-12517-2427": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-60179-7202": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-85134-6066": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-51169-2562": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-88222-6392": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-16057-6082": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-42744-1584": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-55180-1554": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-75377-2507": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-22118-1070": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-69188-2773": { type: "1month", expiresAt: null },
+    "Phantomware-Roblox-Month-32663-3314": { type: "1month", expiresAt: null },
+    
+    "Phantomware-Roblox-Lifetime-58073-4652": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-47418-7144": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-71970-7432": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-73781-6363": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-85743-8565": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-58550-9323": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-90725-5062": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-37143-3986": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-67303-1947": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-10612-5621": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-82859-4166": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-31192-1434": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-70392-5066": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-37041-2779": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-59997-7214": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-60988-6208": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-40763-2230": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-80764-8290": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-39182-5784": { type: "lifetime", expiresAt: null },
+    "Phantomware-Roblox-Lifetime-38039-2235": { type: "lifetime", expiresAt: null },
+
     // ── Phantomware FortnitePublic 1day ────────────────────────────────
     "Phantomware-FortnitePublic-Day-48291-7391": { type: "1day", expiresAt: null },
     "Phantomware-FortnitePublic-Day-19384-6627": { type: "1day", expiresAt: null },
@@ -1496,7 +1581,7 @@ app.post('/admin/update-product-status', async (req, res) => {
     try {
         const { name, enabled, message, adminSecret } = req.body;
         if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
-        
+
         await ProductStatus.findOneAndUpdate(
             { name },
             { enabled, message },
@@ -1537,9 +1622,9 @@ async function syncDiscordStatus() {
         fields: fields,
         image: { url: "https://pc-opt-server.onrender.com/Phantomware%20Ai.png" },
         thumbnail: { url: "https://pc-opt-server.onrender.com/pw%20icon.png" },
-        footer: { 
-            text: "Last Synchronized • Phantomware Founders", 
-            icon_url: "https://pc-opt-server.onrender.com/pw%20icon.png" 
+        footer: {
+            text: "Last Synchronized • Phantomware Founders",
+            icon_url: "https://pc-opt-server.onrender.com/pw%20icon.png"
         },
         timestamp: new Date().toISOString()
     };
