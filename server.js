@@ -250,91 +250,6 @@ const keyDB = {
     "Phantomware-Fivem-lifetime-44320-8891": { type: "lifetime", expiresAt: null },
     "Phantomware-Fivem-lifetime-12984-6670": { type: "lifetime", expiresAt: null },
 
-    // ── Phantomware Roblox ────────────────────────────────────
-    "Phantomware-Roblox-Day-14267-7363": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-94603-5801": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-66481-3922": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-55489-8135": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-93444-7932": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-48346-5324": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-79176-8592": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-16844-7622": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-77506-9675": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-94894-9898": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-81815-9458": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-64798-5229": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-75454-5880": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-89625-8108": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-20773-3174": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-24114-2547": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-17347-1594": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-66021-4883": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-60238-8689": { type: "1day", expiresAt: null },
-    "Phantomware-Roblox-Day-21963-5388": { type: "1day", expiresAt: null },
-    
-    "Phantomware-Roblox-Week-94782-8466": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-63145-3377": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-71664-7540": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-37001-5109": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-12647-4448": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-90659-2939": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-26303-4364": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-70886-2471": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-19573-2291": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-59854-8421": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-27345-2219": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-33853-6580": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-54352-8894": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-32405-8642": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-64703-6194": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-78893-4943": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-79560-6352": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-49444-7856": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-89591-3832": { type: "1week", expiresAt: null },
-    "Phantomware-Roblox-Week-78866-2487": { type: "1week", expiresAt: null },
-    
-    "Phantomware-Roblox-Month-44069-6386": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-29575-1714": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-23362-7538": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-20756-6148": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-40550-6040": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-52928-4877": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-12737-8948": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-55721-8612": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-12517-2427": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-60179-7202": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-85134-6066": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-51169-2562": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-88222-6392": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-16057-6082": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-42744-1584": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-55180-1554": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-75377-2507": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-22118-1070": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-69188-2773": { type: "1month", expiresAt: null },
-    "Phantomware-Roblox-Month-32663-3314": { type: "1month", expiresAt: null },
-    
-    "Phantomware-Roblox-Lifetime-58073-4652": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-47418-7144": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-71970-7432": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-73781-6363": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-85743-8565": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-58550-9323": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-90725-5062": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-37143-3986": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-67303-1947": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-10612-5621": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-82859-4166": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-31192-1434": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-70392-5066": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-37041-2779": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-59997-7214": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-60988-6208": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-40763-2230": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-80764-8290": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-39182-5784": { type: "lifetime", expiresAt: null },
-    "Phantomware-Roblox-Lifetime-38039-2235": { type: "lifetime", expiresAt: null },
-
     // ── Phantomware FortnitePublic 1day ────────────────────────────────
     "Phantomware-FortnitePublic-Day-48291-7391": { type: "1day", expiresAt: null },
     "Phantomware-FortnitePublic-Day-19384-6627": { type: "1day", expiresAt: null },
@@ -960,26 +875,18 @@ let pendingOrders = [];
 // ── PERSISTENCE ───────────────────────────────────────────────
 const seedDatabase = async () => {
     try {
-        console.log('🌱 Syncing database with local key cache...');
-        let inserted = 0;
-        for (const kString of Object.keys(keyDB)) {
-            const exists = await Key.findOne({ keyString: kString });
-            if (!exists) {
-                const newKey = new Key({
-                    keyString: kString,
-                    type: keyDB[kString].type,
-                    expiresAt: keyDB[kString].expiresAt
-                });
-                await newKey.save();
-                inserted++;
-            }
+        const keyCount = await Key.countDocuments();
+        if (keyCount === 0) {
+            console.log('🌱 Seeding database with initial keys...');
+            const keysToInsert = Object.keys(keyDB).map(k => ({
+                keyString: k,
+                type: keyDB[k].type,
+                expiresAt: keyDB[k].expiresAt
+            }));
+            await Key.insertMany(keysToInsert);
+            console.log(`✅ Seeded ${keysToInsert.length} keys.`);
         }
-        if (inserted > 0) {
-            console.log(`✅ Sync complete. Inserted ${inserted} new keys.`);
-        } else {
-            console.log('✅ Database is already up to date.');
-        }
-    } catch (e) { console.error('Failed to sync database:', e.message); }
+    } catch (e) { console.error('Failed to seed database:', e.message); }
 };
 
 seedDatabase();
@@ -1111,11 +1018,11 @@ app.post('/redeem', async (req, res) => {
     let product = "Unknown";
     const kLow = key.toLowerCase();
     if (kLow.includes("fivem")) product = "FiveM";
-    else if (kLow.includes("roblox")) product = "Roblox";
     else if (kLow.includes("fortnitepublic")) product = "Fortnite Public";
     else if (kLow.includes("fortniteai")) product = "Fortnite AI";
     else if (kLow.includes("r6")) product = "Rainbow Six Siege";
     else if (kLow.includes("optimizer")) product = "Optimizer";
+    else if (kLow.includes("roblox")) product = "Roblox External";
     else if (kLow.includes("permspoofer")) product = "Perm Spoofer";
     else if (kLow.includes("tempspoofer")) product = "Temp Spoofer";
     else if (kLow.includes("spoofer")) product = "Spoofer";
@@ -1444,6 +1351,7 @@ app.post('/admin/key-counts', async (req, res) => {
             fivem: { day: 0, usedDay: 0, week: 0, usedWeek: 0, month: 0, usedMonth: 0, lifetime: 0, usedLifetime: 0 },
             r6: { day: 0, usedDay: 0, week: 0, usedWeek: 0, month: 0, usedMonth: 0, lifetime: 0, usedLifetime: 0 },
             fortniteAi: { day: 0, usedDay: 0, week: 0, usedWeek: 0, month: 0, usedMonth: 0, lifetime: 0, usedLifetime: 0 },
+            roblox: { day: 0, usedDay: 0, week: 0, usedWeek: 0, month: 0, usedMonth: 0, lifetime: 0, usedLifetime: 0 },
             tempSpoofer: { onetime: 0, usedOnetime: 0, lifetime: 0, usedLifetime: 0 },
             permSpoofer: { onetime: 0, usedOnetime: 0, lifetime: 0, usedLifetime: 0 }
         };
@@ -1457,6 +1365,7 @@ app.post('/admin/key-counts', async (req, res) => {
             if (str.includes('fivem')) cat = stats.fivem;
             else if (str.includes('r6')) cat = stats.r6;
             else if (str.includes('fortniteai')) cat = stats.fortniteAi;
+            else if (str.includes('roblox')) cat = stats.roblox;
             else if (str.includes('tempspoofer')) cat = stats.tempSpoofer;
             else if (str.includes('permspoofer')) cat = stats.permSpoofer;
             // Fallback for general spoofer keys
@@ -1609,7 +1518,6 @@ async function syncDiscordStatus() {
     const products = [
         { name: 'Fortnite Public', key: 'FortnitePublic' },
         { name: 'Fortnite Ai', key: 'FortniteAi' },
-        { name: 'Roblox Internal', key: 'Roblox' },
         { name: 'Rainbow Six Siege', key: 'R6' },
         { name: 'FiveM', key: 'Fivem' },
         { name: 'Temp Spoofer', key: 'TempSpoofer' },
