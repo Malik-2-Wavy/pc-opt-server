@@ -1674,6 +1674,56 @@ app.post('/admin/delete-product-status', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- Epic Games Account Generator ---
+app.post('/admin/generate-epic', async (req, res) => {
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
+    
+    const filePath = path.join(__dirname, 'accounts.txt');
+    const webhookUrl = 'https://discord.com/api/webhooks/1500139781169090671/7yvAsXvqwQ7m6XhnPL1n7YKSdDXuJZrcwMV6qanW1ydK8vSkhjIdyXnN-JcoKarld3xd';
+
+    try {
+        if (!fs.existsSync(filePath)) {
+            return res.json({ success: false, message: "accounts.txt not found." });
+        }
+
+        let content = fs.readFileSync(filePath, 'utf-8');
+        let lines = content.split('\n').filter(line => line.trim() !== '');
+
+        if (lines.length === 0) {
+            return res.json({ success: false, message: "No more accounts available in accounts.txt." });
+        }
+
+        const account = lines[0];
+        const remainingLines = lines.slice(1).join('\n');
+        fs.writeFileSync(filePath, remainingLines, 'utf-8');
+
+        // Send to Discord
+        const [email, password] = account.split(':');
+        const embed = {
+            title: "🎮 Epic Games Account Generated",
+            description: "A new account has been generated from the admin panel.",
+            color: 0x9d50bb,
+            fields: [
+                { name: "Email/Username", value: `\`${email || 'N/A'}\``, inline: false },
+                { name: "Password", value: `\`${password || 'N/A'}\``, inline: false }
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: "Phantomware Admin Portal" }
+        };
+
+        await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ embeds: [embed] })
+        });
+
+        res.json({ success: true, account: account });
+    } catch (err) {
+        console.error("Generator Error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
