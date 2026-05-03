@@ -1421,6 +1421,43 @@ app.get('/ai-package-link', (req, res) => {
     res.send(GOFILE_AI_URL);
 });
 
+// --- Broadcast Endpoints ---
+app.get('/broadcast', async (req, res) => {
+    try {
+        const broadcast = await Config.findOne({ key: 'active_broadcast' });
+        if (broadcast) {
+            res.json(JSON.parse(broadcast.value));
+        } else {
+            res.json({});
+        }
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/admin/send-broadcast', async (req, res) => {
+    try {
+        const { title, message, adminSecret } = req.body;
+        if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+
+        const payload = { title, message, timestamp: Date.now() };
+        await Config.findOneAndUpdate(
+            { key: 'active_broadcast' },
+            { value: JSON.stringify(payload) },
+            { upsert: true }
+        );
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/admin/clear-broadcast', async (req, res) => {
+    try {
+        const { adminSecret } = req.body;
+        if (adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+
+        await Config.deleteOne({ key: 'active_broadcast' });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- Public News Endpoint (For the Loader) ---
 app.get('/news', async (req, res) => {
     try {
@@ -1513,11 +1550,20 @@ app.post('/admin/update-product-status', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/admin/sync-discord', async (req, res) => {
+    try {
+        if (req.body.adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false });
+        await syncDiscordStatus();
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 async function syncDiscordStatus() {
     const statuses = await ProductStatus.find();
     const products = [
         { name: 'Fortnite Public', key: 'FortnitePublic' },
         { name: 'Fortnite Ai', key: 'FortniteAi' },
+        { name: 'Roblox External', key: 'Roblox' },
         { name: 'Rainbow Six Siege', key: 'R6' },
         { name: 'FiveM', key: 'Fivem' },
         { name: 'Temp Spoofer', key: 'TempSpoofer' },
@@ -1631,3 +1677,4 @@ app.post('/admin/delete-product-status', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
+
