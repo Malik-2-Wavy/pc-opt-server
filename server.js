@@ -960,18 +960,26 @@ let pendingOrders = [];
 // ── PERSISTENCE ───────────────────────────────────────────────
 const seedDatabase = async () => {
     try {
-        const keyCount = await Key.countDocuments();
-        if (keyCount === 0) {
-            console.log('🌱 Seeding database with initial keys...');
-            const keysToInsert = Object.keys(keyDB).map(k => ({
-                keyString: k,
-                type: keyDB[k].type,
-                expiresAt: keyDB[k].expiresAt
-            }));
-            await Key.insertMany(keysToInsert);
-            console.log(`✅ Seeded ${keysToInsert.length} keys.`);
+        console.log('🌱 Syncing database with local key cache...');
+        let inserted = 0;
+        for (const kString of Object.keys(keyDB)) {
+            const exists = await Key.findOne({ keyString: kString });
+            if (!exists) {
+                const newKey = new Key({
+                    keyString: kString,
+                    type: keyDB[kString].type,
+                    expiresAt: keyDB[kString].expiresAt
+                });
+                await newKey.save();
+                inserted++;
+            }
         }
-    } catch (e) { console.error('Failed to seed database:', e.message); }
+        if (inserted > 0) {
+            console.log(`✅ Sync complete. Inserted ${inserted} new keys.`);
+        } else {
+            console.log('✅ Database is already up to date.');
+        }
+    } catch (e) { console.error('Failed to sync database:', e.message); }
 };
 
 seedDatabase();
@@ -1103,6 +1111,7 @@ app.post('/redeem', async (req, res) => {
     let product = "Unknown";
     const kLow = key.toLowerCase();
     if (kLow.includes("fivem")) product = "FiveM";
+    else if (kLow.includes("roblox")) product = "Roblox";
     else if (kLow.includes("fortnitepublic")) product = "Fortnite Public";
     else if (kLow.includes("fortniteai")) product = "Fortnite AI";
     else if (kLow.includes("r6")) product = "Rainbow Six Siege";
@@ -1600,6 +1609,7 @@ async function syncDiscordStatus() {
     const products = [
         { name: 'Fortnite Public', key: 'FortnitePublic' },
         { name: 'Fortnite Ai', key: 'FortniteAi' },
+        { name: 'Roblox Internal', key: 'Roblox' },
         { name: 'Rainbow Six Siege', key: 'R6' },
         { name: 'FiveM', key: 'Fivem' },
         { name: 'Temp Spoofer', key: 'TempSpoofer' },
