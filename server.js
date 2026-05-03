@@ -1697,27 +1697,8 @@ app.post('/admin/generate-epic', async (req, res) => {
         const remainingLines = lines.slice(1).join('\n');
         fs.writeFileSync(filePath, remainingLines, 'utf-8');
 
-        // Send to Discord
-        const [email, password] = account.split(':');
-        const embed = {
-            title: "🎮 Epic Games Account Generated",
-            description: "A new account has been generated from the admin panel.",
-            color: 0x9d50bb,
-            fields: [
-                { name: "Email/Username", value: `\`${email || 'N/A'}\``, inline: false },
-                { name: "Password", value: `\`${password || 'N/A'}\``, inline: false }
-            ],
-            timestamp: new Date().toISOString(),
-            footer: { text: "Phantomware Admin Portal" }
-        };
-
-        await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ embeds: [embed] })
-        });
-
         res.json({ success: true, account: account });
+
     } catch (err) {
         console.error("Generator Error:", err);
         res.status(500).json({ success: false, message: err.message });
@@ -1727,4 +1708,3 @@ app.post('/admin/generate-epic', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
-
