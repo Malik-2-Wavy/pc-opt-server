@@ -1562,6 +1562,8 @@ async function syncDiscordStatus() {
     const statuses = await ProductStatus.find();
     const products = [
         { name: 'Fortnite Public', key: 'FortnitePublic' },
+        { name: 'Fortnite Private', key: 'FortnitePrivate' },
+
         { name: 'Fortnite Ai', key: 'FortniteAi' },
         { name: 'Roblox External', key: 'Roblox' },
         { name: 'Rainbow Six Siege', key: 'R6' },
@@ -1569,7 +1571,6 @@ async function syncDiscordStatus() {
         { name: 'Temp Spoofer', key: 'TempSpoofer' },
         { name: 'Perm Spoofer', key: 'PermSpoofer' }
     ];
-
     const fields = products.map(p => {
         const s = statuses.find(stat => stat.name === p.key) || { enabled: true, message: 'Operational' };
         return {
@@ -1578,12 +1579,11 @@ async function syncDiscordStatus() {
             inline: true
         };
     });
-
     const embed = {
         title: "🛡️ PHANTOMWARE | LIVE STATUS OVERVIEW",
         description: "Real-time operational status for all software modules. This message updates automatically whenever a change is made by the administration.",
         color: 0x9d50bb,
-        fields: fields,
+        fields,
         image: { url: "https://pc-opt-server.onrender.com/Phantomware%20Ai.png" },
         thumbnail: { url: "https://pc-opt-server.onrender.com/pw%20icon.png" },
         footer: {
@@ -1592,23 +1592,19 @@ async function syncDiscordStatus() {
         },
         timestamp: new Date().toISOString()
     };
-
     let messageIdConfig = await Config.findOne({ key: 'statusMessageId' });
     let url = WEBHOOK_URL;
     let method = 'POST';
-
     if (messageIdConfig && messageIdConfig.value) {
         url = `${WEBHOOK_URL}/messages/${messageIdConfig.value}`;
         method = 'PATCH';
     }
-
     try {
         const res = await fetch(url + (method === 'POST' ? '?wait=true' : ''), {
-            method: method,
+            method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ embeds: [embed] })
         });
-
         if (res.ok) {
             const data = await res.json();
             if (method === 'POST' && data.id) {
