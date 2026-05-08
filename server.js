@@ -912,6 +912,7 @@ app.get('/dashboard.html', (req, res) => {
 app.get('/auth/discord/callback', async (req, res) => {
     const { code } = req.query;
     if (!code) return res.send("No code provided.");
+    
     try {
         const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
             method: 'POST',
@@ -930,7 +931,7 @@ app.get('/auth/discord/callback', async (req, res) => {
         const username = discordUser.username;
         const discordId = discordUser.id;
         const avatar = discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${discordUser.avatar}.png` : null;
-
+ 
         let user = await findUser(username);
         if (!user) {
             user = new User({ username, passwordHash: `discord_${discordId}`, key: 'discord_linked', hwid: null, discordId, avatar });
@@ -939,16 +940,61 @@ app.get('/auth/discord/callback', async (req, res) => {
             if (avatar) user.avatar = avatar;
         }
         await user.save();
-
+ 
+        // Store result for loader polling
+        pendingDiscordAuth.set(discordId, {
+            authenticated: true,
+            discordId: discordId,
+            username: username,
+            avatar: avatar,
+            timestamp: Date.now()
+        });
+ 
+        // Generate auth code for manual input
+        const authCode = Math.random().toString(36).substring(2, 15).toUpperCase();
+        pendingDiscordAuth.set(authCode, {
+            authenticated: true,
+            discordId: discordId,
+            username: username,
+            avatar: avatar,
+            timestamp: Date.now()
+        });
+ 
         res.send(`
-            <script>
-                localStorage.setItem('phantom_user', '${username}');
-                localStorage.setItem('phantom_key', '${user.key}');
-                ${avatar ? `localStorage.setItem('avatar_${username}', '${avatar}');` : ''}
-                window.location.href = '/dashboard.html';
-            </script>
+            <html>
+            <head><title>Authentication Complete</title></head>
+            <body style="background: #1a1a2e; color: white; font-family: Arial; text-align: center; padding: 50px;">
+                <h2 style="color: #7289da;">✅ Discord Authentication Complete!</h2>
+                <p>Welcome <strong>${username}</strong>!</p>
+                <div style="background: #2c2c54; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px;">
+                    <h3>For Loader Login:</h3>
+                    <p style="color: #ffd700; font-size: 18px; font-weight: bold;">Auth Code:</p>
+                    <div style="background: #1a1a2e; padding: 15px; border-radius: 5px; font-size: 24px; font-weight: bold; color: #00ff00; letter-spacing: 2px;">
+                        ${authCode}
+                    </div>
+                    <p style="font-size: 12px; color: #999;">Copy this code and paste it into the loader</p>
+                    <button onclick="navigator.clipboard.writeText('${authCode}')" style="background: #7289da; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+                        📋 Copy Code
+                    </button>
+                </div>
+                <p style="font-size: 14px; color: #999;">You can now close this window and return to the loader.</p>
+                <script>
+                    localStorage.setItem('phantom_user', '${username}');
+                    localStorage.setItem('phantom_key', '${user.key}');
+                    ${avatar ? `localStorage.setItem('avatar_${username}', '${avatar}');` : ''}
+                    
+                    // Auto-redirect after 10 seconds
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 10000);
+                </script>
+            </body>
+            </html>
         `);
-    } catch (e) { console.error(e); res.send("Discord authentication failed."); }
+    } catch (e) { 
+        console.error(e); 
+        res.send("Discord authentication failed."); 
+    }
 });
 
 // ── AUTH (signup / login) ─────────────────────────────────────
@@ -2032,6 +2078,78 @@ app.post('/api/user/disconnect-api-key', async (req, res) => {
     } catch (error) {
         console.error('Disconnect API key error:', error);
         res.status(500).json({ success: false, message: "Failed to disconnect API key" });
+    }
+});
+
+// Add this at the top with other variables
+let pendingDiscordAuth = new Map(); // Store pending auth results
+
+app.post('/auth/discord/manual', async (req, res) => {
+    const { code } = req.body;
+    if (!code) return res.json({ success: false, message: "No code provided." });
+    
+    const authResult = pendingDiscordAuth.get(code);
+    if (!authResult) {
+        return res.json({ success: false, message: "Invalid or expired code." });
+    }
+    
+    // Clear the code after use
+    pendingDiscordAuth.delete(code);
+    
+    res.json({ 
+        success: true, 
+        discordId: authResult.discordId, 
+        username: authResult.username, 
+        avatar: authResult.avatar 
+    });
+});
+ 
+app.get('/auth/discord/check', async (req, res) => {
+    const { discordId } = req.query;
+    
+    if (!discordId) {
+        return res.json({ authenticated: false });
+    }
+    
+    const authResult = pendingDiscordAuth.get(discordId);
+    if (authResult) {
+        // Clear after retrieval
+        pendingDiscordAuth.delete(discordId);
+        return res.json(authResult);
+    }
+    
+    res.json({ authenticated: false });
+});
+ 
+app.post('/auth/discord', async (req, res) => {
+    const { discordId, username, avatar, hwid } = req.body;
+    
+    try {
+        let user = await findUser(username);
+        if (!user) {
+            user = new User({ username, passwordHash: `discord_${discordId}`, key: 'discord_linked', hwid, discordId, avatar });
+        } else {
+            user.discordId = discordId;
+            if (avatar) user.avatar = avatar;
+            if (hwid) user.hwid = hwid;
+        }
+        await user.save();
+        
+        const subscriptions = {};
+        if (user.subscriptions) {
+            user.subscriptions.forEach((value, key) => {
+                subscriptions[key] = value;
+            });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: "Discord authentication successful!",
+            subscriptions: subscriptions 
+        });
+    } catch (e) {
+        console.error('Discord auth error:', e);
+        res.json({ success: false, message: "Authentication failed" });
     }
 });
 
