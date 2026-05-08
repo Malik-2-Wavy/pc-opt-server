@@ -1959,6 +1959,82 @@ app.get('/loader/user/:apiKey', async (req, res) => {
   }
 });
 
+app.post('/api/user/connect-api-key', async (req, res) => {
+    try {
+        const { username, apiKey } = req.body;
+        
+        // Find user by username
+        const user = await User.findOne({ username: username });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+        
+        // Find API key owner
+        const keyOwner = await User.findOne({ key: apiKey });
+        if (!keyOwner) {
+            return res.json({ success: false, message: "Invalid API key" });
+        }
+        
+        // Merge subscriptions from API key owner to current user
+        if (keyOwner.subscriptions) {
+            if (!user.subscriptions) user.subscriptions = new Map();
+            
+            keyOwner.subscriptions.forEach((value, key) => {
+                user.subscriptions.set(key, value);
+            });
+            
+            user.markModified('subscriptions');
+            await user.save();
+        }
+        
+        res.json({ success: true, message: "API key connected successfully!" });
+        
+    } catch (error) {
+        console.error('Connect API key error:', error);
+        res.status(500).json({ success: false, message: "Failed to connect API key" });
+    }
+});
+ 
+app.post('/api/user/generate-key', async (req, res) => {
+    try {
+        const { username, newKey } = req.body;
+        
+        const user = await User.findOne({ username: username });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+        
+        user.key = newKey;
+        await user.save();
+        
+        res.json({ success: true, message: "API key generated!" });
+        
+    } catch (error) {
+        console.error('Generate key error:', error);
+        res.status(500).json({ success: false, message: "Failed to generate key" });
+    }
+});
+ 
+app.post('/api/user/disconnect-api-key', async (req, res) => {
+    try {
+        const { username } = req.body;
+        
+        const user = await User.findOne({ username: username });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+        
+        user.key = "";
+        await user.save();
+        
+        res.json({ success: true, message: "API key disconnected!" });
+        
+    } catch (error) {
+        console.error('Disconnect API key error:', error);
+        res.status(500).json({ success: false, message: "Failed to disconnect API key" });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
