@@ -1701,6 +1701,160 @@ app.post('/admin/generate-epic', async (req, res) => {
     }
 });
 
+// ── WEBSITE AUTHENTICATION (NEW) ───────────────────────────────────
+app.post('/api/auth/signup', async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        
+        // Validation
+        if (!username || username.length < 3) {
+            return res.json({ success: false, message: "Username must be at least 3 characters" });
+        }
+        if (!email || !email.includes('@')) {
+            return res.json({ success: false, message: "Valid email required" });
+        }
+        if (!password || password.length < 6) {
+            return res.json({ success: false, message: "Password must be at least 6 characters" });
+        }
+        
+        // Check if user exists
+        const existingUser = await User.findOne({ username: username });
+        if (existingUser) {
+            return res.json({ success: false, message: "Username already exists" });
+        }
+        
+        // Create new user
+        const newUser = new User({
+            username: username,
+            passwordHash: password, // Plain text for now (you should hash this)
+            key: `web_${Date.now()}`,
+            hwid: null,
+            discordId: null,
+            avatar: null,
+            playtime: 0,
+            subscriptions: new Map()
+        });
+        
+        await newUser.save();
+        
+        res.json({ 
+            success: true, 
+            message: "Account created successfully!",
+            user: {
+                username: username,
+                key: newUser.key,
+                subscriptions: {}
+            }
+        });
+        
+    } catch (error) {
+        console.error('Signup error:', error);
+        res.status(500).json({ success: false, message: "Server error during signup" });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        // Validation
+        if (!username || username.length < 3) {
+            return res.json({ success: false, message: "Username required" });
+        }
+        if (!password) {
+            return res.json({ success: false, message: "Password required" });
+        }
+        
+        // Find user
+        const user = await User.findOne({ username: username });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+        
+        // Check password (plain text comparison for now)
+        if (user.passwordHash !== password) {
+            return res.json({ success: false, message: "Incorrect password" });
+        }
+        
+        // Convert subscriptions Map to object for response
+        const subscriptions = {};
+        if (user.subscriptions) {
+            user.subscriptions.forEach((value, key) => {
+                subscriptions[key] = value;
+            });
+        }
+        
+        res.json({ 
+            success: true, 
+            message: "Login successful!",
+            user: {
+                username: user.username,
+                key: user.key,
+                subscriptions: subscriptions
+            }
+        });
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, message: "Server error during login" });
+    }
+});
+
+app.get('/api/user/profile/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const user = await User.findOne({ username: username });
+        
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+        
+        // Convert subscriptions Map to object
+        const subscriptions = {};
+        if (user.subscriptions) {
+            user.subscriptions.forEach((value, key) => {
+                subscriptions[key] = value;
+            });
+        }
+        
+        res.json({
+            success: true,
+            user: {
+                username: user.username,
+                key: user.key,
+                discordId: user.discordId,
+                avatar: user.avatar,
+                playtime: user.playtime,
+                subscriptions: subscriptions
+            }
+        });
+        
+    } catch (error) {
+        console.error('Profile error:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+app.post('/api/user/update-password', async (req, res) => {
+    try {
+        const { username, currentPassword, newPassword } = req.body;
+        
+        const user = await User.findOne({ username: username });
+        if (!user || user.passwordHash !== currentPassword) {
+            return res.json({ success: false, message: "Current password incorrect" });
+        }
+        
+        user.passwordHash = newPassword;
+        await user.save();
+        
+        res.json({ success: true, message: "Password updated successfully!" });
+        
+    } catch (error) {
+        console.error('Password update error:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
