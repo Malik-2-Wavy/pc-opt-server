@@ -1855,6 +1855,25 @@ app.post('/api/user/update-password', async (req, res) => {
     }
 });
 
+app.post('/api/discord/exchange-token', async (req, res) => {
+  const { code } = req.body;
+  
+  const response = await fetch('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.DISCORD_CLIENT_ID,
+      client_secret: process.env.DISCORD_CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: `${process.env.DOMAIN}/discord-callback`
+    })
+  });
+  
+  const data = await response.json();
+  res.json(data);
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
