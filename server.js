@@ -248,7 +248,7 @@ const keyDB = {
     "Phantomware-Fivem-lifetime-61529-7714": { type: "lifetime", expiresAt: null },
     "Phantomware-Fivem-lifetime-80731-2236": { type: "lifetime", expiresAt: null },
     "Phantomware-Fivem-lifetime-44320-8891": { type: "lifetime", expiresAt: null },
-    "Phantomware-Fivem-lifetime-12984-6670": { type: "lifetime", expiresAt: null },
+    "Phantomware-Fivem-lifetime-12984-6672": { type: "lifetime", expiresAt: null },
 
     // ── Phantomware FortnitePublic 1day ────────────────────────────────
     "Phantomware-FortnitePublic-Day-48291-7391": { type: "1day", expiresAt: null },
@@ -335,7 +335,7 @@ const keyDB = {
     "Phantomware-FortnitePublic-Lifetime-77439-2204": { type: "lifetime", expiresAt: null },
     "Phantomware-FortnitePublic-Lifetime-61825-3347": { type: "lifetime", expiresAt: null },
     "Phantomware-FortnitePublic-Lifetime-39011-7778": { type: "lifetime", expiresAt: null },
-    "Phantomware-FortnitePublic-Lifetime-84562-1120": { type: "lifetime", expiresAt: null },
+    "Phantomware-FortnitePublic-Lifetime-84562-1121": { type: "lifetime", expiresAt: null },
     "Phantomware-FortnitePublic-Lifetime-27109-6604": { type: "lifetime", expiresAt: null },
 
     // ── Phantomware FortniteAi 1day ────────────────────────────────
@@ -424,7 +424,7 @@ const keyDB = {
     "Phantomware-FortniteAi-Lifetime-24891-5520": { type: "lifetime", expiresAt: null },
     "Phantomware-FortniteAi-Lifetime-93014-6678": { type: "lifetime", expiresAt: null },
     "Phantomware-FortniteAi-Lifetime-57122-4419": { type: "lifetime", expiresAt: null },
-    "Phantomware-FortniteAi-Lifetime-80431-9929": { type: "lifetime", expiresAt: null },
+    "Phantomware-FortniteAi-Lifetime-80431-9927": { type: "lifetime", expiresAt: null },
 
     // ── Phantomware R6 1day ───────────────────────────────────
     "Phantomware-R6-day-91347-5521": { type: "1day", expiresAt: null },
@@ -512,7 +512,7 @@ const keyDB = {
     "Phantomware-R6-lifetime-62529-7719": { type: "lifetime", expiresAt: null },
     "Phantomware-R6-lifetime-81731-2241": { type: "lifetime", expiresAt: null },
     "Phantomware-R6-lifetime-45320-8896": { type: "lifetime", expiresAt: null },
-    "Phantomware-R6-lifetime-13984-6675": { type: "lifetime", expiresAt: null },
+    "Phantomware-R6-lifetime-13984-6676": { type: "lifetime", expiresAt: null },
 
     // ── Temp Spoofer Lifetime ─────────────────────────────────
     "Phantomware-TempSpoofer-Lifetime-29483-6617": { type: "lifetime", expiresAt: null },
@@ -534,7 +534,7 @@ const keyDB = {
     "Phantomware-TempSpoofer-Lifetime-82659-1137": { type: "lifetime", expiresAt: null },
     "Phantomware-TempSpoofer-Lifetime-13590-7284": { type: "lifetime", expiresAt: null },
     "Phantomware-TempSpoofer-Lifetime-60814-5593": { type: "lifetime", expiresAt: null },
-    "Phantomware-TempSpoofer-Lifetime-79263-4470": { type: "lifetime", expiresAt: null },
+    "Phantomware-TempSpoofer-Lifetime-79263-4471": { type: "lifetime", expiresAt: null },
 
     // ── Temp Spoofer Onetime ──────────────────────────────────
     "Phantomware-TempSpoofer-Onetime-58392-1746": { type: "onetime", expiresAt: null },
@@ -600,7 +600,7 @@ const keyDB = {
     "Phantomware-PermSpoofer-Lifetime-12683-5547": { type: "lifetime", expiresAt: null },
     "Phantomware-PermSpoofer-Lifetime-65572-3310": { type: "lifetime", expiresAt: null },
     "Phantomware-PermSpoofer-Lifetime-89014-7763": { type: "lifetime", expiresAt: null },
-    "Phantomware-PermSpoofer-Lifetime-34768-2295": { type: "lifetime", expiresAt: null },
+    "Phantomware-PermSpoofer-Lifetime-34768-2296": { type: "lifetime", expiresAt: null },
 
     // ── 21Services AR Pack ────────────────────────────────────
     "21Services-ARPack-58291-3746": { type: "lifetime", expiresAt: null },
