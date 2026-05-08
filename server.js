@@ -92,7 +92,7 @@ const WEBHOOK_URL = 'https://discord.com/api/webhooks/1495138684738076932/6Y6UPI
 
 // --- Discord OAuth Config ---
 const DISCORD_CLIENT_ID = '1487881232015425797';
-const DISCORD_CLIENT_SECRET = 'XJa8MRwO_lrOHxJZzBVWiJXECwTZUJC6';
+const DISCORD_CLIENT_SECRET = 'qZBr6-3NdjyQsdpnUrH79QSJKsLoLokf';
 const DISCORD_REDIRECT_URI = 'https://pc-opt-server.onrender.com/discord-callback';
 
 // --- Legacy Memory Cache (for seeding/migration only) ---
