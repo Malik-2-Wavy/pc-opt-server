@@ -1874,6 +1874,91 @@ app.post('/api/discord/exchange-token', async (req, res) => {
   res.json(data);
 });
 
+// --- Loader Authentication & Account Sync ---
+app.post('/loader/auth', async (req, res) => {
+  try {
+    const { apiKey, hwid } = req.body;
+    
+    if (!apiKey) {
+      return res.json({ success: false, message: "API key required" });
+    }
+    
+    // Find user by API key
+    const user = await User.findOne({ key: apiKey });
+    if (!user) {
+      return res.json({ success: false, message: "Invalid API key" });
+    }
+    
+    // HWID binding (optional for web users)
+    if (hwid && !hwid.startsWith('WEB-')) {
+      if (user.hwid && user.hwid !== hwid) {
+        return res.json({ success: false, message: "HWID mismatch" });
+      }
+      if (!user.hwid) {
+        user.hwid = hwid;
+        await user.save();
+      }
+    }
+    
+    // Convert subscriptions Map to object
+    const subscriptions = {};
+    if (user.subscriptions) {
+      user.subscriptions.forEach((value, key) => {
+        subscriptions[key] = value;
+      });
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        username: user.username,
+        hwid: user.hwid,
+        subscriptions: subscriptions,
+        discordId: user.discordId,
+        avatar: user.avatar
+      }
+    });
+    
+  } catch (error) {
+    console.error('Loader auth error:', error);
+    res.status(500).json({ success: false, message: "Authentication failed" });
+  }
+});
+
+// --- Get User by API Key (for loader) ---
+app.get('/loader/user/:apiKey', async (req, res) => {
+  try {
+    const { apiKey } = req.params;
+    
+    const user = await User.findOne({ key: apiKey });
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
+    
+    // Convert subscriptions Map to object
+    const subscriptions = {};
+    if (user.subscriptions) {
+      user.subscriptions.forEach((value, key) => {
+        subscriptions[key] = value;
+      });
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        username: user.username,
+        subscriptions: subscriptions,
+        hwid: user.hwid,
+        discordId: user.discordId
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ success: false, message: "Failed to get user" });
+  }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
