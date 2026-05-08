@@ -909,7 +909,8 @@ app.get('/dashboard.html', (req, res) => {
 });
 
 // ── DISCORD AUTH CALLBACK ────────────────────────────────────
-app.get('/auth/discord/callback', async (req, res) => {
+// Add this to your backend BEFORE the existing callback
+app.get('/discord-callback', async (req, res) => {
     const { code } = req.query;
     if (!code) {
         return res.send(`
