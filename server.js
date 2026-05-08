@@ -911,27 +911,53 @@ app.get('/dashboard.html', (req, res) => {
 // ── DISCORD AUTH CALLBACK ────────────────────────────────────
 app.get('/auth/discord/callback', async (req, res) => {
     const { code } = req.query;
-    if (!code) return res.send("No code provided.");
+    if (!code) {
+        return res.send(`
+            <html>
+            <head><title>Authentication Failed</title></head>
+            <body style="background: #1a1a2e; color: white; font-family: Arial; text-align: center; padding: 50px;">
+                <h2 style="color: #ff4444;">❌ Authentication Failed</h2>
+                <p>No authorization code received from Discord.</p>
+                <p>Please try again.</p>
+            </body>
+            </html>
+        `);
+    }
     
     try {
+        console.log('Discord callback received with code:', code);
+        
         const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
             method: 'POST',
             body: new URLSearchParams({
-                client_id: DISCORD_CLIENT_ID, client_secret: DISCORD_CLIENT_SECRET,
-                code, grant_type: 'authorization_code',
-                redirect_uri: DISCORD_REDIRECT_URI, scope: 'identify email'
+                client_id: DISCORD_CLIENT_ID, 
+                client_secret: DISCORD_CLIENT_SECRET,
+                code, 
+                grant_type: 'authorization_code',
+                redirect_uri: DISCORD_REDIRECT_URI, 
+                scope: 'identify email'
             }),
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
+        
         const tokenData = await tokenResponse.json();
+        console.log('Token response:', tokenData);
+        
+        if (tokenData.error) {
+            throw new Error('Token error: ' + tokenData.error);
+        }
+        
         const userResponse = await fetch('https://discord.com/api/users/@me', {
             headers: { authorization: `Bearer ${tokenData.access_token}` }
         });
+        
         const discordUser = await userResponse.json();
+        console.log('Discord user:', discordUser);
+        
         const username = discordUser.username;
         const discordId = discordUser.id;
         const avatar = discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${discordUser.avatar}.png` : null;
- 
+
         let user = await findUser(username);
         if (!user) {
             user = new User({ username, passwordHash: `discord_${discordId}`, key: 'discord_linked', hwid: null, discordId, avatar });
@@ -940,16 +966,7 @@ app.get('/auth/discord/callback', async (req, res) => {
             if (avatar) user.avatar = avatar;
         }
         await user.save();
- 
-        // Store result for loader polling
-        pendingDiscordAuth.set(discordId, {
-            authenticated: true,
-            discordId: discordId,
-            username: username,
-            avatar: avatar,
-            timestamp: Date.now()
-        });
- 
+
         // Generate auth code for manual input
         const authCode = Math.random().toString(36).substring(2, 15).toUpperCase();
         pendingDiscordAuth.set(authCode, {
@@ -959,7 +976,9 @@ app.get('/auth/discord/callback', async (req, res) => {
             avatar: avatar,
             timestamp: Date.now()
         });
- 
+
+        console.log('Generated auth code:', authCode);
+
         res.send(`
             <html>
             <head><title>Authentication Complete</title></head>
@@ -992,8 +1011,17 @@ app.get('/auth/discord/callback', async (req, res) => {
             </html>
         `);
     } catch (e) { 
-        console.error(e); 
-        res.send("Discord authentication failed."); 
+        console.error('Discord callback error:', e);
+        res.send(`
+            <html>
+            <head><title>Authentication Failed</title></head>
+            <body style="background: #1a1a2e; color: white; font-family: Arial; text-align: center; padding: 50px;">
+                <h2 style="color: #ff4444;">❌ Discord Authentication Failed</h2>
+                <p>Error: ${e.message}</p>
+                <p>Please try again or contact support.</p>
+            </body>
+            </html>
+        `);
     }
 });
 
