@@ -92,8 +92,8 @@ const WEBHOOK_URL = 'https://discord.com/api/webhooks/1495138684738076932/6Y6UPI
 
 // --- Discord OAuth Config ---
 const DISCORD_CLIENT_ID = '1487881232015425797';
-const DISCORD_CLIENT_SECRET = 'qZBr6-3NdjyQsdpnUrH79QSJKsLoLokf';
-const DISCORD_REDIRECT_URI = 'https://pc-opt-server.onrender.com/discord-callback';
+const DISCORD_CLIENT_SECRET = 'XJa8MRwO_lrOHxJZzBVWiJXECwTZUJC6';
+const DISCORD_REDIRECT_URI = 'https://pc-opt-server.onrender.com/auth/discord/callback';
 
 // --- Legacy Memory Cache (for seeding/migration only) ---
 let userDB = {};
@@ -909,52 +909,24 @@ app.get('/dashboard.html', (req, res) => {
 });
 
 // ── DISCORD AUTH CALLBACK ────────────────────────────────────
-// Add this to your backend BEFORE the existing callback
-app.get('/discord-callback', async (req, res) => {
+app.get('/auth/discord/callback', async (req, res) => {
     const { code } = req.query;
-    if (!code) {
-        return res.send(`
-            <html>
-            <head><title>Authentication Failed</title></head>
-            <body style="background: #1a1a2e; color: white; font-family: Arial; text-align: center; padding: 50px;">
-                <h2 style="color: #ff4444;">❌ Authentication Failed</h2>
-                <p>No authorization code received from Discord.</p>
-                <p>Please try again.</p>
-            </body>
-            </html>
-        `);
-    }
-    
+    if (!code) return res.send("No code provided.");
     try {
-        console.log('Discord callback received with code:', code);
-        
         const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
             method: 'POST',
             body: new URLSearchParams({
-                client_id: DISCORD_CLIENT_ID, 
-                client_secret: DISCORD_CLIENT_SECRET,
-                code, 
-                grant_type: 'authorization_code',
-                redirect_uri: DISCORD_REDIRECT_URI, 
-                scope: 'identify email'
+                client_id: DISCORD_CLIENT_ID, client_secret: DISCORD_CLIENT_SECRET,
+                code, grant_type: 'authorization_code',
+                redirect_uri: DISCORD_REDIRECT_URI, scope: 'identify email'
             }),
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
-        
         const tokenData = await tokenResponse.json();
-        console.log('Token response:', tokenData);
-        
-        if (tokenData.error) {
-            throw new Error('Token error: ' + tokenData.error);
-        }
-        
         const userResponse = await fetch('https://discord.com/api/users/@me', {
             headers: { authorization: `Bearer ${tokenData.access_token}` }
         });
-        
         const discordUser = await userResponse.json();
-        console.log('Discord user:', discordUser);
-        
         const username = discordUser.username;
         const discordId = discordUser.id;
         const avatar = discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${discordUser.avatar}.png` : null;
@@ -968,62 +940,15 @@ app.get('/discord-callback', async (req, res) => {
         }
         await user.save();
 
-        // Generate auth code for manual input
-        const authCode = Math.random().toString(36).substring(2, 15).toUpperCase();
-        pendingDiscordAuth.set(authCode, {
-            authenticated: true,
-            discordId: discordId,
-            username: username,
-            avatar: avatar,
-            timestamp: Date.now()
-        });
-
-        console.log('Generated auth code:', authCode);
-
         res.send(`
-            <html>
-            <head><title>Authentication Complete</title></head>
-            <body style="background: #1a1a2e; color: white; font-family: Arial; text-align: center; padding: 50px;">
-                <h2 style="color: #7289da;">✅ Discord Authentication Complete!</h2>
-                <p>Welcome <strong>${username}</strong>!</p>
-                <div style="background: #2c2c54; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px;">
-                    <h3>For Loader Login:</h3>
-                    <p style="color: #ffd700; font-size: 18px; font-weight: bold;">Auth Code:</p>
-                    <div style="background: #1a1a2e; padding: 15px; border-radius: 5px; font-size: 24px; font-weight: bold; color: #00ff00; letter-spacing: 2px;">
-                        ${authCode}
-                    </div>
-                    <p style="font-size: 12px; color: #999;">Copy this code and paste it into the loader</p>
-                    <button onclick="navigator.clipboard.writeText('${authCode}')" style="background: #7289da; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">
-                        📋 Copy Code
-                    </button>
-                </div>
-                <p style="font-size: 14px; color: #999;">You can now close this window and return to the loader.</p>
-                <script>
-                    localStorage.setItem('phantom_user', '${username}');
-                    localStorage.setItem('phantom_key', '${user.key}');
-                    ${avatar ? `localStorage.setItem('avatar_${username}', '${avatar}');` : ''}
-                    
-                    // Auto-redirect after 10 seconds
-                    setTimeout(() => {
-                        window.location.href = '/dashboard.html';
-                    }, 10000);
-                </script>
-            </body>
-            </html>
+            <script>
+                localStorage.setItem('phantom_user', '${username}');
+                localStorage.setItem('phantom_key', '${user.key}');
+                ${avatar ? `localStorage.setItem('avatar_${username}', '${avatar}');` : ''}
+                window.location.href = '/dashboard.html';
+            </script>
         `);
-    } catch (e) { 
-        console.error('Discord callback error:', e);
-        res.send(`
-            <html>
-            <head><title>Authentication Failed</title></head>
-            <body style="background: #1a1a2e; color: white; font-family: Arial; text-align: center; padding: 50px;">
-                <h2 style="color: #ff4444;">❌ Discord Authentication Failed</h2>
-                <p>Error: ${e.message}</p>
-                <p>Please try again or contact support.</p>
-            </body>
-            </html>
-        `);
-    }
+    } catch (e) { console.error(e); res.send("Discord authentication failed."); }
 });
 
 // ── AUTH (signup / login) ─────────────────────────────────────
@@ -1748,7 +1673,7 @@ app.post('/admin/delete-product-status', async (req, res) => {
 // --- Epic Games Account Generator ---
 app.post('/admin/generate-epic', async (req, res) => {
     if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
-    
+
     const filePath = path.join(__dirname, 'accounts.txt');
     const webhookUrl = 'https://discord.com/api/webhooks/1500139781169090671/7yvAsXvqwQ7m6XhnPL1n7YKSdDXuJZrcwMV6qanW1ydK8vSkhjIdyXnN-JcoKarld3xd';
 
@@ -1780,7 +1705,7 @@ app.post('/admin/generate-epic', async (req, res) => {
 app.post('/api/auth/signup', async (req, res) => {
     try {
         const { username, email, password } = req.body;
-        
+
         // Validation
         if (!username || username.length < 3) {
             return res.json({ success: false, message: "Username must be at least 3 characters" });
@@ -1791,13 +1716,13 @@ app.post('/api/auth/signup', async (req, res) => {
         if (!password || password.length < 6) {
             return res.json({ success: false, message: "Password must be at least 6 characters" });
         }
-        
+
         // Check if user exists
         const existingUser = await User.findOne({ username: username });
         if (existingUser) {
             return res.json({ success: false, message: "Username already exists" });
         }
-        
+
         // Create new user
         const newUser = new User({
             username: username,
@@ -1809,9 +1734,9 @@ app.post('/api/auth/signup', async (req, res) => {
             playtime: 0,
             subscriptions: new Map()
         });
-        
+
         await newUser.save();
-        
+
         res.json({ 
             success: true, 
             message: "Account created successfully!",
@@ -1821,7 +1746,7 @@ app.post('/api/auth/signup', async (req, res) => {
                 subscriptions: {}
             }
         });
-        
+
     } catch (error) {
         console.error('Signup error:', error);
         res.status(500).json({ success: false, message: "Server error during signup" });
@@ -1831,7 +1756,7 @@ app.post('/api/auth/signup', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        
+
         // Validation
         if (!username || username.length < 3) {
             return res.json({ success: false, message: "Username required" });
@@ -1839,18 +1764,18 @@ app.post('/api/auth/login', async (req, res) => {
         if (!password) {
             return res.json({ success: false, message: "Password required" });
         }
-        
+
         // Find user
         const user = await User.findOne({ username: username });
         if (!user) {
             return res.json({ success: false, message: "User not found" });
         }
-        
+
         // Check password (plain text comparison for now)
         if (user.passwordHash !== password) {
             return res.json({ success: false, message: "Incorrect password" });
         }
-        
+
         // Convert subscriptions Map to object for response
         const subscriptions = {};
         if (user.subscriptions) {
@@ -1858,7 +1783,7 @@ app.post('/api/auth/login', async (req, res) => {
                 subscriptions[key] = value;
             });
         }
-        
+
         res.json({ 
             success: true, 
             message: "Login successful!",
@@ -1868,7 +1793,7 @@ app.post('/api/auth/login', async (req, res) => {
                 subscriptions: subscriptions
             }
         });
-        
+
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ success: false, message: "Server error during login" });
@@ -1879,11 +1804,11 @@ app.get('/api/user/profile/:username', async (req, res) => {
     try {
         const { username } = req.params;
         const user = await User.findOne({ username: username });
-        
+
         if (!user) {
             return res.json({ success: false, message: "User not found" });
         }
-        
+
         // Convert subscriptions Map to object
         const subscriptions = {};
         if (user.subscriptions) {
@@ -1891,7 +1816,7 @@ app.get('/api/user/profile/:username', async (req, res) => {
                 subscriptions[key] = value;
             });
         }
-        
+
         res.json({
             success: true,
             user: {
@@ -1903,7 +1828,7 @@ app.get('/api/user/profile/:username', async (req, res) => {
                 subscriptions: subscriptions
             }
         });
-        
+
     } catch (error) {
         console.error('Profile error:', error);
         res.status(500).json({ success: false, message: "Server error" });
@@ -1913,17 +1838,17 @@ app.get('/api/user/profile/:username', async (req, res) => {
 app.post('/api/user/update-password', async (req, res) => {
     try {
         const { username, currentPassword, newPassword } = req.body;
-        
+
         const user = await User.findOne({ username: username });
         if (!user || user.passwordHash !== currentPassword) {
             return res.json({ success: false, message: "Current password incorrect" });
         }
-        
+
         user.passwordHash = newPassword;
         await user.save();
-        
+
         res.json({ success: true, message: "Password updated successfully!" });
-        
+
     } catch (error) {
         console.error('Password update error:', error);
         res.status(500).json({ success: false, message: "Server error" });
@@ -1947,239 +1872,6 @@ app.post('/api/discord/exchange-token', async (req, res) => {
   
   const data = await response.json();
   res.json(data);
-});
-
-// --- Loader Authentication & Account Sync ---
-app.post('/loader/auth', async (req, res) => {
-  try {
-    const { apiKey, hwid } = req.body;
-    
-    if (!apiKey) {
-      return res.json({ success: false, message: "API key required" });
-    }
-    
-    // Find user by API key
-    const user = await User.findOne({ key: apiKey });
-    if (!user) {
-      return res.json({ success: false, message: "Invalid API key" });
-    }
-    
-    // HWID binding (optional for web users)
-    if (hwid && !hwid.startsWith('WEB-')) {
-      if (user.hwid && user.hwid !== hwid) {
-        return res.json({ success: false, message: "HWID mismatch" });
-      }
-      if (!user.hwid) {
-        user.hwid = hwid;
-        await user.save();
-      }
-    }
-    
-    // Convert subscriptions Map to object
-    const subscriptions = {};
-    if (user.subscriptions) {
-      user.subscriptions.forEach((value, key) => {
-        subscriptions[key] = value;
-      });
-    }
-    
-    res.json({
-      success: true,
-      user: {
-        username: user.username,
-        hwid: user.hwid,
-        subscriptions: subscriptions,
-        discordId: user.discordId,
-        avatar: user.avatar
-      }
-    });
-    
-  } catch (error) {
-    console.error('Loader auth error:', error);
-    res.status(500).json({ success: false, message: "Authentication failed" });
-  }
-});
-
-// --- Get User by API Key (for loader) ---
-app.get('/loader/user/:apiKey', async (req, res) => {
-  try {
-    const { apiKey } = req.params;
-    
-    const user = await User.findOne({ key: apiKey });
-    if (!user) {
-      return res.json({ success: false, message: "User not found" });
-    }
-    
-    // Convert subscriptions Map to object
-    const subscriptions = {};
-    if (user.subscriptions) {
-      user.subscriptions.forEach((value, key) => {
-        subscriptions[key] = value;
-      });
-    }
-    
-    res.json({
-      success: true,
-      user: {
-        username: user.username,
-        subscriptions: subscriptions,
-        hwid: user.hwid,
-        discordId: user.discordId
-      }
-    });
-    
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({ success: false, message: "Failed to get user" });
-  }
-});
-
-app.post('/api/user/connect-api-key', async (req, res) => {
-    try {
-        const { username, apiKey } = req.body;
-        
-        // Find user by username
-        const user = await User.findOne({ username: username });
-        if (!user) {
-            return res.json({ success: false, message: "User not found" });
-        }
-        
-        // Find API key owner
-        const keyOwner = await User.findOne({ key: apiKey });
-        if (!keyOwner) {
-            return res.json({ success: false, message: "Invalid API key" });
-        }
-        
-        // Merge subscriptions from API key owner to current user
-        if (keyOwner.subscriptions) {
-            if (!user.subscriptions) user.subscriptions = new Map();
-            
-            keyOwner.subscriptions.forEach((value, key) => {
-                user.subscriptions.set(key, value);
-            });
-            
-            user.markModified('subscriptions');
-            await user.save();
-        }
-        
-        res.json({ success: true, message: "API key connected successfully!" });
-        
-    } catch (error) {
-        console.error('Connect API key error:', error);
-        res.status(500).json({ success: false, message: "Failed to connect API key" });
-    }
-});
- 
-app.post('/api/user/generate-key', async (req, res) => {
-    try {
-        const { username, newKey } = req.body;
-        
-        const user = await User.findOne({ username: username });
-        if (!user) {
-            return res.json({ success: false, message: "User not found" });
-        }
-        
-        user.key = newKey;
-        await user.save();
-        
-        res.json({ success: true, message: "API key generated!" });
-        
-    } catch (error) {
-        console.error('Generate key error:', error);
-        res.status(500).json({ success: false, message: "Failed to generate key" });
-    }
-});
- 
-app.post('/api/user/disconnect-api-key', async (req, res) => {
-    try {
-        const { username } = req.body;
-        
-        const user = await User.findOne({ username: username });
-        if (!user) {
-            return res.json({ success: false, message: "User not found" });
-        }
-        
-        user.key = "";
-        await user.save();
-        
-        res.json({ success: true, message: "API key disconnected!" });
-        
-    } catch (error) {
-        console.error('Disconnect API key error:', error);
-        res.status(500).json({ success: false, message: "Failed to disconnect API key" });
-    }
-});
-
-// Add this at the top with other variables
-let pendingDiscordAuth = new Map(); // Store pending auth results
-
-app.post('/auth/discord/manual', async (req, res) => {
-    const { code } = req.body;
-    if (!code) return res.json({ success: false, message: "No code provided." });
-    
-    const authResult = pendingDiscordAuth.get(code);
-    if (!authResult) {
-        return res.json({ success: false, message: "Invalid or expired code." });
-    }
-    
-    // Clear the code after use
-    pendingDiscordAuth.delete(code);
-    
-    res.json({ 
-        success: true, 
-        discordId: authResult.discordId, 
-        username: authResult.username, 
-        avatar: authResult.avatar 
-    });
-});
- 
-app.get('/auth/discord/check', async (req, res) => {
-    const { discordId } = req.query;
-    
-    if (!discordId) {
-        return res.json({ authenticated: false });
-    }
-    
-    const authResult = pendingDiscordAuth.get(discordId);
-    if (authResult) {
-        // Clear after retrieval
-        pendingDiscordAuth.delete(discordId);
-        return res.json(authResult);
-    }
-    
-    res.json({ authenticated: false });
-});
- 
-app.post('/auth/discord', async (req, res) => {
-    const { discordId, username, avatar, hwid } = req.body;
-    
-    try {
-        let user = await findUser(username);
-        if (!user) {
-            user = new User({ username, passwordHash: `discord_${discordId}`, key: 'discord_linked', hwid, discordId, avatar });
-        } else {
-            user.discordId = discordId;
-            if (avatar) user.avatar = avatar;
-            if (hwid) user.hwid = hwid;
-        }
-        await user.save();
-        
-        const subscriptions = {};
-        if (user.subscriptions) {
-            user.subscriptions.forEach((value, key) => {
-                subscriptions[key] = value;
-            });
-        }
-        
-        res.json({ 
-            success: true, 
-            message: "Discord authentication successful!",
-            subscriptions: subscriptions 
-        });
-    } catch (e) {
-        console.error('Discord auth error:', e);
-        res.json({ success: false, message: "Authentication failed" });
-    }
 });
 
 app.listen(PORT, () => {
