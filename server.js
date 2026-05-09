@@ -1809,12 +1809,15 @@ app.get('/api/user/profile/:username', async (req, res) => {
             return res.json({ success: false, message: "User not found" });
         }
 
-        // Convert subscriptions Map to object
+        // Convert subscriptions Map to plain object
         const subscriptions = {};
-        if (user.subscriptions) {
+        if (user.subscriptions && user.subscriptions instanceof Map) {
             user.subscriptions.forEach((value, key) => {
                 subscriptions[key] = value;
             });
+        } else if (user.subscriptions && typeof user.subscriptions === 'object') {
+            // Handle case where it might already be an object
+            Object.assign(subscriptions, user.subscriptions);
         }
 
         res.json({
@@ -1824,7 +1827,7 @@ app.get('/api/user/profile/:username', async (req, res) => {
                 key: user.key,
                 discordId: user.discordId,
                 avatar: user.avatar,
-                playtime: user.playtime,
+                playtime: user.playtime || 0,
                 subscriptions: subscriptions
             }
         });
