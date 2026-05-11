@@ -1737,8 +1737,8 @@ app.post('/api/auth/signup', async (req, res) => {
 
         await newUser.save();
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: "Account created successfully!",
             user: {
                 username: username,
@@ -1784,8 +1784,8 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: "Login successful!",
             user: {
                 username: user.username,
@@ -1859,22 +1859,22 @@ app.post('/api/user/update-password', async (req, res) => {
 });
 
 app.post('/api/discord/exchange-token', async (req, res) => {
-  const { code } = req.body;
-  
-  const response = await fetch('https://discord.com/api/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: process.env.DISCORD_CLIENT_ID,
-      client_secret: process.env.DISCORD_CLIENT_SECRET,
-      grant_type: 'authorization_code',
-      code: code,
-      redirect_uri: `${process.env.DOMAIN}/discord-callback`
-    })
-  });
-  
-  const data = await response.json();
-  res.json(data);
+    const { code } = req.body;
+
+    const response = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_id: process.env.DISCORD_CLIENT_ID,
+            client_secret: process.env.DISCORD_CLIENT_SECRET,
+            grant_type: 'authorization_code',
+            code: code,
+            redirect_uri: `${process.env.DOMAIN}/discord-callback`
+        })
+    });
+
+    const data = await response.json();
+    res.json(data);
 });
 
 app.listen(PORT, () => {
