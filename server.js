@@ -29,7 +29,8 @@ const UserSchema = new mongoose.Schema({
     discordId: String,
     avatar: String,
     playtime: { type: Number, default: 0 },
-    subscriptions: { type: Map, of: Number, default: {} }
+    subscriptions: { type: Map, of: Number, default: {} },
+    isAdmin: { type: Boolean, default: false }
 });
 const User = mongoose.model('User', UserSchema);
 
