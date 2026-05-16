@@ -56,6 +56,18 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.model('Order', OrderSchema);
 
+const ConfigSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    description: { type: String },
+    product: { type: String, required: true },
+    uploadedBy: { type: String, required: true },
+    configData: { type: String, required: true }, // Base64 encoded config file
+    fileName: { type: String, required: true },
+    downloads: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now }
+});
+const Config = mongoose.model('Config', ConfigSchema);
+
 const NewsSchema = new mongoose.Schema({
     title: String,
     content: String,
@@ -1908,6 +1920,108 @@ app.get('/api/user/license-keys/:username', async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 });
+
+app.post('/api/config/upload', async (req, res) => {
+    try {
+        const { name, description, product, configData, fileName, username } = req.body;
+        
+        if (!name || !product || !configData || !fileName || !username) {
+            return res.json({ success: false, message: "Missing required fields" });
+        }
+
+        const newConfig = new Config({
+            name,
+            description,
+            product,
+            uploadedBy: username,
+            configData,
+            fileName
+        });
+
+        await newConfig.save();
+        res.json({ success: true, message: "Config uploaded successfully!" });
+
+    } catch (error) {
+        console.error('Error uploading config:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// Get all configs
+app.get('/api/configs', async (req, res) => {
+    try {
+        const configs = await Config.find().sort({ createdAt: -1 });
+        res.json({ success: true, configs });
+
+    } catch (error) {
+        console.error('Error fetching configs:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// Get configs by product
+app.get('/api/configs/product/:product', async (req, res) => {
+    try {
+        const { product } = req.params;
+        const configs = await Config.find({ product }).sort({ createdAt: -1 });
+        res.json({ success: true, configs });
+
+    } catch (error) {
+        console.error('Error fetching configs:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// Download config (returns config data)
+app.get('/api/config/download/:id', async (req, res) => {
+    try {
+        const config = await Config.findById(req.params.id);
+        if (!config) {
+            return res.json({ success: false, message: "Config not found" });
+        }
+
+        // Increment download count
+        config.downloads += 1;
+        await config.save();
+
+        res.json({ 
+            success: true, 
+            config: {
+                name: config.name,
+                fileName: config.fileName,
+                configData: config.configData
+            }
+        });
+
+    } catch (error) {
+        console.error('Error downloading config:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// Delete config (by uploader)
+app.post('/api/config/delete/:id', async (req, res) => {
+    try {
+        const { username } = req.body;
+        const config = await Config.findById(req.params.id);
+        
+        if (!config) {
+            return res.json({ success: false, message: "Config not found" });
+        }
+
+        if (config.uploadedBy !== username) {
+            return res.json({ success: false, message: "You can only delete your own configs" });
+        }
+
+        await Config.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Config deleted successfully" });
+
+    } catch (error) {
+        console.error('Error deleting config:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
