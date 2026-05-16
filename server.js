@@ -4,6 +4,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -97,6 +98,17 @@ const ConfigSchema = new mongoose.Schema({
     value: String
 });
 const Config = mongoose.model('Config', ConfigSchema);
+
+// Configure Mailgun SMTP
+const transporter = nodemailer.createTransport({
+    host: 'smtp.mailgun.org',
+    port: 587,
+    secure: false,
+    auth: {
+        user: 'postmaster@sandbox.mailgun.org', // Update with your actual Mailgun domain
+        pass: 'a16a4c569493cb96e15a845ad596034b-0b5dc895-8c7833a1'
+    }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -911,6 +923,74 @@ const findUser = async (name) => {
     return await User.findOne({ username: new RegExp('^' + name + '$', 'i') });
 };
 
+// Function to send subscription confirmation email
+async function sendSubscriptionConfirmation(email, subscribed) {
+    try {
+        const mailOptions = {
+            from: 'noreply@phantomware.com',
+            to: email,
+            subject: subscribed ? 'You have subscribed to Phantomware updates' : 'You have unsubscribed from Phantomware updates',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #9d50bb;">${subscribed ? 'Subscription Confirmed' : 'Unsubscribed'}</h2>
+                    <p>${subscribed ? 'You have successfully subscribed to receive email updates from Phantomware.' : 'You have been unsubscribed from Phantomware email updates.'}</p>
+                    <p>${subscribed ? 'You will receive notifications about new features, updates, and news.' : 'You will no longer receive email notifications from us.'}</p>
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+                    <p style="color: #666; font-size: 12px;">Phantomware • ${new Date().getFullYear()}</p>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Subscription ${subscribed ? 'confirmation' : 'unsubscribed'} email sent to: ${email}`);
+        return true;
+    } catch (error) {
+        console.error('Error sending subscription email:', error);
+        return false;
+    }
+}
+
+// Function to send news notification to subscribed users
+async function sendNewsNotification(users, newsItem) {
+    const results = { success: 0, failed: 0 };
+
+    for (const user of users) {
+        if (!user.email || !user.emailSubscription) continue;
+
+        try {
+            const mailOptions = {
+                from: 'noreply@phantomware.com',
+                to: user.email,
+                subject: `Phantomware Update: ${newsItem.title}`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #9d50bb;">${newsItem.title}</h2>
+                        <div style="background: #f5f5f5; padding: 10px 15px; border-radius: 5px; display: inline-block; margin-bottom: 15px;">
+                            <span style="font-weight: bold; color: #666;">Type:</span> 
+                            <span style="color: ${newsItem.type === 'UPDATE' ? '#22c55e' : newsItem.type === 'MAINTENANCE' ? '#ef4444' : '#8b5cf6'};">${newsItem.type}</span>
+                        </div>
+                        <p style="line-height: 1.6;">${newsItem.content}</p>
+                        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                            Check your customer panel for more details.
+                        </p>
+                        <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+                        <p style="color: #666; font-size: 12px;">Phantomware • ${new Date().getFullYear()}</p>
+                    </div>
+                `
+            };
+
+            await transporter.sendMail(mailOptions);
+            results.success++;
+            console.log(`News notification sent to: ${user.email}`);
+        } catch (error) {
+            results.failed++;
+            console.error(`Failed to send news notification to ${user.email}:`, error);
+        }
+    }
+
+    return results;
+}
+
 // ── WEB ROUTES ────────────────────────────────────────────────
 app.get('/', (req, res) => {
     const p = path.join(__dirname, 'phantomware.html');
@@ -1482,11 +1562,27 @@ app.get('/news', async (req, res) => {
 });
 
 // --- News Endpoints ---
-app.get('/admin/news', async (req, res) => {
+app.post('/admin/news', async (req, res) => {
     try {
-        const news = await News.find().sort({ timestamp: -1 });
-        res.json(news);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const { title, content, type } = req.body;
+        const entry = new News({ title, content, type });
+        await entry.save();
+        
+        // Send email notifications to subscribed users
+        const subscribedUsers = await User.find({ 
+            email: { $exists: true, $ne: null },
+            emailSubscription: true 
+        });
+        
+        if (subscribedUsers.length > 0) {
+            const results = await sendNewsNotification(subscribedUsers, { title, content, type });
+            console.log(`News notifications sent: ${results.success} success, ${results.failed} failed`);
+        }
+        
+        res.json({ success: true });
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 app.post('/admin/news', async (req, res) => {
@@ -1831,6 +1927,11 @@ app.post('/api/user/email-subscription', async (req, res) => {
         
         user.emailSubscription = emailSubscription;
         await user.save();
+        
+        // Send confirmation email if user has an email
+        if (user.email) {
+            await sendSubscriptionConfirmation(user.email, emailSubscription);
+        }
         
         res.json({ success: true, message: "Subscription preference updated!" });
         
