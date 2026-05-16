@@ -56,7 +56,7 @@ const OrderSchema = new mongoose.Schema({
 });
 const Order = mongoose.model('Order', OrderSchema);
 
-const ConfigSchema = new mongoose.Schema({
+const UserConfigSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String },
     product: { type: String, required: true },
@@ -66,7 +66,7 @@ const ConfigSchema = new mongoose.Schema({
     downloads: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
 });
-const Config = mongoose.model('Config', ConfigSchema);
+const UserConfig = mongoose.model('UserConfig', UserConfigSchema);
 
 const NewsSchema = new mongoose.Schema({
     title: String,
@@ -1921,6 +1921,7 @@ app.get('/api/user/license-keys/:username', async (req, res) => {
     }
 });
 
+// Upload config
 app.post('/api/config/upload', async (req, res) => {
     try {
         const { name, description, product, configData, fileName, username } = req.body;
@@ -1929,7 +1930,7 @@ app.post('/api/config/upload', async (req, res) => {
             return res.json({ success: false, message: "Missing required fields" });
         }
 
-        const newConfig = new Config({
+        const newConfig = new UserConfig({
             name,
             description,
             product,
@@ -1950,7 +1951,7 @@ app.post('/api/config/upload', async (req, res) => {
 // Get all configs
 app.get('/api/configs', async (req, res) => {
     try {
-        const configs = await Config.find().sort({ createdAt: -1 });
+        const configs = await UserConfig.find().sort({ createdAt: -1 });
         res.json({ success: true, configs });
 
     } catch (error) {
@@ -1963,7 +1964,7 @@ app.get('/api/configs', async (req, res) => {
 app.get('/api/configs/product/:product', async (req, res) => {
     try {
         const { product } = req.params;
-        const configs = await Config.find({ product }).sort({ createdAt: -1 });
+        const configs = await UserConfig.find({ product }).sort({ createdAt: -1 });
         res.json({ success: true, configs });
 
     } catch (error) {
@@ -1975,7 +1976,7 @@ app.get('/api/configs/product/:product', async (req, res) => {
 // Download config (returns config data)
 app.get('/api/config/download/:id', async (req, res) => {
     try {
-        const config = await Config.findById(req.params.id);
+        const config = await UserConfig.findById(req.params.id);
         if (!config) {
             return res.json({ success: false, message: "Config not found" });
         }
@@ -2003,7 +2004,7 @@ app.get('/api/config/download/:id', async (req, res) => {
 app.post('/api/config/delete/:id', async (req, res) => {
     try {
         const { username } = req.body;
-        const config = await Config.findById(req.params.id);
+        const config = await UserConfig.findById(req.params.id);
         
         if (!config) {
             return res.json({ success: false, message: "Config not found" });
@@ -2013,7 +2014,7 @@ app.post('/api/config/delete/:id', async (req, res) => {
             return res.json({ success: false, message: "You can only delete your own configs" });
         }
 
-        await Config.findByIdAndDelete(req.params.id);
+        await UserConfig.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Config deleted successfully" });
 
     } catch (error) {
@@ -2021,6 +2022,7 @@ app.post('/api/config/delete/:id', async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 });
+
 
 
 app.listen(PORT, () => {
