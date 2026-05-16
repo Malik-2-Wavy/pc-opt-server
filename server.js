@@ -30,7 +30,9 @@ const UserSchema = new mongoose.Schema({
     avatar: String,
     playtime: { type: Number, default: 0 },
     subscriptions: { type: Map, of: Number, default: {} },
-    isAdmin: { type: Boolean, default: false }
+    isAdmin: { type: Boolean, default: false },
+    email: { type: String },
+    emailSubscription: { type: Boolean, default: false }
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -1719,7 +1721,6 @@ app.post('/api/auth/signup', async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
-        // Validation
         if (!username || username.length < 3) {
             return res.json({ success: false, message: "Username must be at least 3 characters" });
         }
@@ -1730,21 +1731,21 @@ app.post('/api/auth/signup', async (req, res) => {
             return res.json({ success: false, message: "Password must be at least 6 characters" });
         }
 
-        // Check if user exists
         const existingUser = await User.findOne({ username: username });
         if (existingUser) {
             return res.json({ success: false, message: "Username already exists" });
         }
 
-        // Create new user
         const newUser = new User({
             username: username,
-            passwordHash: password, // Plain text for now (you should hash this)
+            passwordHash: password,
             key: `web_${Date.now()}`,
             hwid: null,
             discordId: null,
             avatar: null,
             playtime: 0,
+            email: email,
+            emailSubscription: false,
             subscriptions: new Map()
         });
 
@@ -1756,6 +1757,7 @@ app.post('/api/auth/signup', async (req, res) => {
             user: {
                 username: username,
                 key: newUser.key,
+                email: email,
                 subscriptions: {}
             }
         });
@@ -1813,6 +1815,31 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// Update email subscription preference
+app.post('/api/user/email-subscription', async (req, res) => {
+    try {
+        const { username, emailSubscription } = req.body;
+        
+        if (!username) {
+            return res.json({ success: false, message: "Missing username" });
+        }
+        
+        const user = await User.findOne({ username: username });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+        
+        user.emailSubscription = emailSubscription;
+        await user.save();
+        
+        res.json({ success: true, message: "Subscription preference updated!" });
+        
+    } catch (error) {
+        console.error('Error updating email subscription:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
 app.get('/api/user/profile/:username', async (req, res) => {
     try {
         const { username } = req.params;
@@ -1833,17 +1860,19 @@ app.get('/api/user/profile/:username', async (req, res) => {
             Object.assign(subscriptions, user.subscriptions);
         }
 
-        res.json({
-            success: true,
-            user: {
-                username: user.username,
-                key: user.key,
-                discordId: user.discordId,
-                avatar: user.avatar,
-                playtime: user.playtime || 0,
-                subscriptions: subscriptions
-            }
-        });
+res.json({
+    success: true,
+    user: {
+        username: user.username,
+        key: user.key,
+        discordId: user.discordId,
+        avatar: user.avatar,
+        playtime: user.playtime || 0,
+        email: user.email || '',
+        emailSubscription: user.emailSubscription || false,
+        subscriptions: subscriptions
+    }
+});
 
     } catch (error) {
         console.error('Profile error:', error);
