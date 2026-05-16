@@ -1881,18 +1881,22 @@ app.post('/api/discord/exchange-token', async (req, res) => {
 app.get('/api/user/license-keys/:username', async (req, res) => {
     try {
         const { username } = req.params;
+        console.log('Fetching license keys for username:', username);
         
         // Find the user
         const user = await User.findOne({ username: username });
         if (!user) {
+            console.log('User not found:', username);
             return res.json({ success: false, message: "User not found" });
         }
 
-        // Get all keys redeemed by this user
-        const userKeys = await Key.find({ usedBy: username });
+        // Get all keys redeemed by this user (case-insensitive)
+        const userKeys = await Key.find({ usedBy: { $regex: new RegExp(`^${username}$`, 'i') } });
+        console.log('Found keys:', userKeys.length, 'for user:', username);
         
         // Return all keys with their key strings
         const keys = userKeys.map(k => k.keyString);
+        console.log('Key strings:', keys);
 
         res.json({
             success: true,
@@ -1904,8 +1908,6 @@ app.get('/api/user/license-keys/:username', async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 });
-
-
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
