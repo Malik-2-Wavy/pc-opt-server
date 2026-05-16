@@ -1561,6 +1561,14 @@ app.get('/news', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/admin/news', async (req, res) => {
+    try {
+        const news = await News.find().sort({ timestamp: -1 });
+        const news = await News.find().sort({ timestamp: -1 });
+        res.json(news);
+        res.json(news);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // --- News Endpoints ---
 app.post('/admin/news', async (req, res) => {
     try {
