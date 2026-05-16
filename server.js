@@ -1950,6 +1950,34 @@ app.get('/api/user/license-keys/:username', async (req, res) => {
     }
 });
 
+app.post('/api/user/update-email', async (req, res) => {
+    try {
+        const { username, email } = req.body;
+        
+        if (!username || !email) {
+            return res.json({ success: false, message: "Missing required fields" });
+        }
+        
+        if (!email.includes('@')) {
+            return res.json({ success: false, message: "Invalid email address" });
+        }
+        
+        const user = await User.findOne({ username: username });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+        
+        user.email = email;
+        await user.save();
+        
+        res.json({ success: true, message: "Email updated successfully!" });
+        
+    } catch (error) {
+        console.error('Error updating email:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
 // Upload config
 app.post('/api/config/upload', async (req, res) => {
     try {
