@@ -1878,6 +1878,53 @@ app.post('/api/discord/exchange-token', async (req, res) => {
     res.json(data);
 });
 
+app.get('/api/user/license-keys/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        
+        // Find the user
+        const user = await User.findOne({ username: username });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+
+        // Get the user's subscriptions
+        const subscriptions = user.subscriptions || {};
+        const keys = {};
+
+        // For each subscription, find the corresponding license key
+        for (const [product, expiry] of Object.entries(subscriptions)) {
+            // Find the key that was used for this product by this user
+            const key = await Key.findOne({ 
+                usedBy: username,
+                keyString: { $regex: product.toLowerCase().replace(/\s+/g, ''), $options: 'i' }
+            });
+            
+            if (key) {
+                keys[product] = key.keyString;
+            } else {
+                // Fallback: try to find any key used by this user
+                const userKey = await Key.findOne({ usedBy: username });
+                if (userKey) {
+                    keys[product] = userKey.keyString;
+                } else {
+                    keys[product] = 'No key found';
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            keys: keys
+        });
+
+    } catch (error) {
+        console.error('Error fetching license keys:', error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
