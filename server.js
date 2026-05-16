@@ -1892,24 +1892,52 @@ app.get('/api/user/license-keys/:username', async (req, res) => {
         const subscriptions = user.subscriptions || {};
         const keys = {};
 
+        // Get all keys used by this user
+        const userKeys = await Key.find({ usedBy: username });
+        
+        // Map product names to key patterns
+        const productPatterns = {
+            'Fortnite Public': ['fortnitepublic', 'fortnite-public'],
+            'Fortnite AI': ['fortniteai', 'fortnite-ai', 'aicheat'],
+            'Fortnite Private': ['fortniteprivate', 'fortnite-private'],
+            'FiveM': ['fivem', 'gta'],
+            'Rainbow Six Siege': ['r6', 'rainbow', 'rainbowsix'],
+            'Roblox External': ['roblox'],
+            'Temp Spoofer': ['tempspoofer', 'temp-spoofer', 'spoofer'],
+            'Perm Spoofer': ['permspoofer', 'perm-spoofer']
+        };
+
         // For each subscription, find the corresponding license key
         for (const [product, expiry] of Object.entries(subscriptions)) {
-            // Find the key that was used for this product by this user
-            const key = await Key.findOne({ 
-                usedBy: username,
-                keyString: { $regex: product.toLowerCase().replace(/\s+/g, ''), $options: 'i' }
-            });
-            
-            if (key) {
-                keys[product] = key.keyString;
-            } else {
-                // Fallback: try to find any key used by this user
-                const userKey = await Key.findOne({ usedBy: username });
-                if (userKey) {
-                    keys[product] = userKey.keyString;
-                } else {
-                    keys[product] = 'No key found';
+            const productLower = product.toLowerCase();
+            let matchedKey = null;
+
+            // Try to match using patterns
+            for (const [keyProduct, patterns] of Object.entries(productPatterns)) {
+                if (productLower.includes(keyProduct.toLowerCase()) || 
+                    keyProduct.toLowerCase().includes(productLower)) {
+                    // Find a key that matches any of the patterns
+                    matchedKey = userKeys.find(k => {
+                        const keyLower = k.keyString.toLowerCase();
+                        return patterns.some(pattern => keyLower.includes(pattern));
+                    });
+                    if (matchedKey) break;
                 }
+            }
+
+            // Fallback: try direct matching
+            if (!matchedKey) {
+                matchedKey = userKeys.find(k => {
+                    const keyLower = k.keyString.toLowerCase();
+                    const productClean = productLower.replace(/\s+/g, '');
+                    return keyLower.includes(productClean);
+                });
+            }
+
+            if (matchedKey) {
+                keys[product] = matchedKey.keyString;
+            } else {
+                keys[product] = 'No key found';
             }
         }
 
