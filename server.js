@@ -927,7 +927,7 @@ const findUser = async (name) => {
 async function sendSubscriptionConfirmation(email, subscribed) {
     try {
         const mailOptions = {
-            from: 'updates@phantomware.com',
+            from: 'updates@phantomware.wtf',
             to: email,
             subject: subscribed ? 'You have subscribed to Phantomware updates' : 'You have unsubscribed from Phantomware updates',
             html: `
@@ -959,7 +959,7 @@ async function sendNewsNotification(users, newsItem) {
 
         try {
             const mailOptions = {
-                from: 'updates@phantomware.com',
+                from: 'updates@phantomware.wtf',
                 to: user.email,
                 subject: `Phantomware Update: ${newsItem.title}`,
                 html: `
