@@ -1570,7 +1570,7 @@ app.get('/admin/news', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // --- News Endpoints ---
-app.post('/admin/news', async (req, res) => {
+app.post('/admin/emailnews', async (req, res) => {
     try {
         const { title, content, type } = req.body;
         const entry = new News({ title, content, type });
